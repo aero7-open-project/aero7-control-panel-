@@ -7,11 +7,12 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia Concurrent DBus OpenGL)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia Concurrent DBus OpenGL Network Test)
 find_package(KF6WidgetsAddons REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Aero7Qt REQUIRED)
+find_package(LayerShellQt REQUIRED)
 find_package(Cups REQUIRED)
 
 add_executable(controlpanel
@@ -19,6 +20,7 @@ add_executable(controlpanel
     src/ui/LinkLabel.h
     src/ui/MainWindow.cpp
     src/ui/PageRegistry.cpp
+    src/ui/ControlPanelItems.cpp
     src/ui/SettingsCatalog.cpp
     src/ui/CategoryWidget.cpp
     src/ui/pages/LinuxUpdatePage.cpp
@@ -31,16 +33,23 @@ add_executable(controlpanel
     src/ui/pages/PowerOptionsPage.cpp
     src/ui/pages/PerformancePage.cpp
     src/ui/pages/PersonalizationPage.cpp
+    src/ui/pages/TaskbarStartMenuPage.cpp
+    src/ui/pages/FolderOptionsPage.cpp
     src/ui/pages/GettingStartedPage.cpp
     src/ui/pages/SettingsHubPage.cpp
+    src/ui/pages/DefaultProgramsPage.cpp
     src/ui/pages/FontsPage.cpp
     src/ui/pages/UserAccountsPage.cpp
     src/ui/pages/EaseOfAccessPage.cpp
     src/ui/pages/DevicesAndPrintersPage.cpp
+    src/ui/pages/DisplayPage.cpp
     src/ui/dialogs/DateTimeDialog.cpp
     src/ui/dialogs/SoundDialog.cpp
     src/ui/dialogs/DevicePropertiesDialog.cpp
     src/ui/dialogs/LinverConfigDialog.cpp
+    src/ui/dialogs/NativeSettingsDialog.cpp
+    src/ui/dialogs/BluetoothDialog.cpp
+    src/ui/dialogs/AddPrinterDialog.cpp
     src/devices/SysfsScanner.cpp
     src/devices/PrinterScanner.cpp
     src/data/WindowsTimeZones.cpp
@@ -86,6 +95,12 @@ set_target_properties(controlpanel PROPERTIES
 )
 
 install(TARGETS controlpanel RUNTIME DESTINATION bin)
+add_executable(aero7-action-center src/actioncenter/main.cpp)
+target_include_directories(aero7-action-center PRIVATE src/ui)
+target_link_libraries(aero7-action-center PRIVATE
+    Qt6::Widgets Qt6::DBus Qt6::Network Aero7Qt::Aero7Qt LayerShellQt::Interface)
+install(TARGETS aero7-action-center RUNTIME DESTINATION bin)
+install(FILES aero7-action-center.desktop DESTINATION /etc/xdg/autostart)
 install(FILES
     linux-controlpanel.desktop
     aero7-getting-started.desktop
@@ -94,6 +109,23 @@ install(FILES
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(branding-test
+        tests/BrandingTest.cpp
+        src/data/Branding.cpp
+    )
+    target_include_directories(branding-test PRIVATE src/data)
+    target_link_libraries(branding-test PRIVATE Qt6::Core Qt6::Gui)
+    add_test(NAME branding-test COMMAND branding-test)
+
+    add_executable(control-panel-items-test
+        tests/ControlPanelItemsTest.cpp
+        src/ui/ControlPanelItems.cpp
+        src/ui/PageRegistry.cpp
+    )
+    target_include_directories(control-panel-items-test PRIVATE src/ui)
+    target_link_libraries(control-panel-items-test PRIVATE Qt6::Core)
+    add_test(NAME control-panel-items-test COMMAND control-panel-items-test)
+
     add_executable(page-registry-test
         tests/PageRegistryTest.cpp
         src/ui/PageRegistry.cpp
@@ -137,10 +169,14 @@ if(BUILD_TESTING)
         src/ui/SettingsCatalog.cpp
         src/ui/pages/SettingsHubPage.h
         src/ui/pages/SettingsHubPage.cpp
+        src/ui/dialogs/NativeSettingsDialog.cpp
+        src/data/Branding.cpp
     )
     target_include_directories(settings-hub-page-test PRIVATE
         src/ui
         src/ui/pages
+        src/ui/dialogs
+        src/data
     )
     target_link_libraries(settings-hub-page-test PRIVATE
         Qt6::Widgets
@@ -149,6 +185,45 @@ if(BUILD_TESTING)
     )
     add_test(NAME settings-hub-page-test COMMAND settings-hub-page-test)
     set_tests_properties(settings-hub-page-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
+    add_executable(display-page-test
+        tests/DisplayPageTest.cpp
+        src/ui/pages/DisplayPage.h
+        src/ui/pages/DisplayPage.cpp
+    )
+    target_include_directories(display-page-test PRIVATE
+        src/ui
+        src/ui/pages
+    )
+    target_link_libraries(display-page-test PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Aero7Qt::Aero7Qt
+    )
+    add_test(NAME display-page-test COMMAND display-page-test)
+    set_tests_properties(display-page-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
+    add_executable(default-programs-page-test
+        tests/DefaultProgramsPageTest.cpp
+        src/ui/pages/DefaultProgramsPage.h
+        src/ui/pages/DefaultProgramsPage.cpp
+    )
+    target_include_directories(default-programs-page-test PRIVATE
+        src/ui
+        src/ui/pages
+    )
+    target_link_libraries(default-programs-page-test PRIVATE
+        Qt6::Widgets
+        Qt6::Test
+        Qt6::Concurrent
+        Aero7Qt::Aero7Qt
+    )
+    add_test(NAME default-programs-page-test COMMAND default-programs-page-test)
+    set_tests_properties(default-programs-page-test PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
 endif()

@@ -36,7 +36,9 @@ void setStyle(Style s)
 bool useWindowsNames()
 {
     QSettings s;
-    return s.value(key("useWindowsNames"), false).toBool();
+    // Windows 7 wording is the Aero7 default. Existing installations that
+    // explicitly saved the old switch retain their choice.
+    return s.value(key("useWindowsNames"), true).toBool();
 }
 
 void setUseWindowsNames(bool on)

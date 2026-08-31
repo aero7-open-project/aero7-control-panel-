@@ -17,7 +17,8 @@ class LinverConfigDialog : public QDialog {
 
 public:
     // `distroName` is the real distribution name shown as the first dropdown
-    // entry (e.g. "CachyOS").
+// entry (e.g. "CachyOS"). The naming checkbox is intentionally phrased as an
+// opt-in to KDE Plasma terminology because Windows 7 names are Aero7's default.
     explicit LinverConfigDialog(const QString &distroName,
                                 QWidget *parent = nullptr);
 
@@ -25,5 +26,5 @@ private:
     void applyToSettings();
 
     QComboBox *m_styleCombo = nullptr;
-    QCheckBox *m_windowsNames = nullptr;
+    QCheckBox *m_kdeNames = nullptr;
 };

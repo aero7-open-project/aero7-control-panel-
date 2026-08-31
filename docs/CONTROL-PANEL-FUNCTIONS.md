@@ -13,7 +13,7 @@ not pretend to be working controls.
 | Getting Started | Learn more | Opens the official Aero7 website |
 | System | Change settings | Validates and changes the real hostname through `hostnamectl` and polkit |
 | System | Experience rating | Opens Performance Information and Tools |
-| Linux Update | Check/install updates | Uses the existing Aero7 `pacman` update workflow |
+| Windows Update | Check/install updates | Uses the existing Aero7 `pacman` update workflow |
 | Programs and Features | Uninstall/repair | Uses the existing package-management workflow and confirmations |
 | Installed Updates | Installed update list | Reads package history; it no longer claims a single historical update can be uninstalled safely |
 | Network and Sharing Center | Status, connect and diagnostics | Reads live NetworkManager data, activates saved connections with `nmcli`, and shows address, gateway and routing diagnostics; the advanced editor remains available separately |
@@ -44,16 +44,16 @@ and Backup and Restore are generated from the central catalog.
 
 Each row contains:
 
-1. the current Aero7 name;
-2. the immutable original KDE name;
+1. the default Windows 7 name;
+2. the KDE Plasma name used by the optional naming mode;
 3. the original KCM module ID when one exists;
 4. a native/partial/compatibility status;
 5. a working action button.
 
-KCM buttons call `kcmshell6 <module>` directly, so users stay in the Aero7
-Control Panel hierarchy and never land on the normal System Settings home page.
-Before launching, Control Panel checks the installed module list. Missing
-optional components produce a clear dialog instead of a silent failure.
+Desktop-owned settings open an Aero7 property sheet and write the established
+Plasma/KWin/KIO configuration. Control Panel does not open the System Settings
+home page or an individual KDE KCM interface. Historical module identifiers
+remain metadata for documentation and debugging.
 
 See [KDE-SETTINGS-MAP.md](KDE-SETTINGS-MAP.md) for the complete name and module
 mapping.
@@ -79,14 +79,14 @@ state-changing action. If a system update has installed a new Linux kernel but
 the computer is still running the previous kernel and its matching modules are
 no longer available, UFW cannot safely initialize its backend. Control Panel
 then shows **Restart required** and disables firewall mutation controls. Run
-Linux Update if anything remains pending, restart Aero7, and open Firewall
+Windows Update if anything remains pending, restart Aero7, and open Firewall
 again. This avoids exposing UFW's otherwise cryptic “Couldn't determine
 iptables version” failure dialog.
 
 ## Adding or renaming a setting
 
-Edit one entry in `src/ui/SettingsCatalog.cpp`. Change `aeroName` when the
-public wording is unclear, but keep `kdeName` and `kdeModule` as the original
-trace. Add a native page/applet target or an individual KCM command, update the
+Edit one entry in `src/ui/SettingsCatalog.cpp`. Keep the exact Windows 7 public
+wording in `aeroName`, and keep `kdeName` and `kdeModule` as the upstream trace.
+Add a native page, property sheet, applet or approved companion target; update the
 mapping document, and run all four CTest tests. Navigation must never depend on
 matching the visible label; stable `PageId` values are used for internal routes.

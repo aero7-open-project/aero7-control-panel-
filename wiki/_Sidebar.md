@@ -3,6 +3,7 @@
 - [Home](Home)
 - [Control Panel Guide](Control-Panel-Guide)
 - [Settings Reference](Settings-Reference)
+- [Windows 7 Parity](Windows-7-Parity)
 - [Backends and Permissions](Backends-and-Permissions)
 - [Installation and Updates](Installation-and-Updates)
 - [Screenshots](Screenshots)

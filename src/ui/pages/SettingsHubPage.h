@@ -7,9 +7,9 @@
 class QScrollArea;
 
 // Aero7's replacement landing page for groups that previously opened the KDE
-// System Settings application.  It owns the public wording, visibly records
-// the original KDE setting name, and can progressively swap each KCM bridge
-// for a native implementation without changing navigation or documentation.
+// System Settings application.  It owns all user-facing wording while keeping
+// compatibility metadata on the controls for automated audits and progressive
+// replacement of each bridge with a native implementation.
 class SettingsHubPage : public QWidget {
     Q_OBJECT
 

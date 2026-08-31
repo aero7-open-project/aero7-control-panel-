@@ -127,9 +127,8 @@ NetworkSharingPage::NetInfo NetworkSharingPage::gatherInfo()
 QList<SidebarLink> NetworkSharingPage::sidebarLinks()
 {
     return {
-        Nav::command("Change adapter settings", kcm("kcm_networkmanagement")),
-        Nav::command("Change advanced sharing settings",
-                     kcm("kcm_networkmanagement")),
+        Nav::to("Change adapter settings", PageId::NetworkSettings),
+        Nav::to("Change advanced sharing settings", PageId::NetworkSettings),
     };
 }
 

@@ -33,9 +33,9 @@ lock-screen controls.
 Programs and Features presents installed packages as user-facing programs.
 User Accounts manages the current account and authenticated account changes.
 
-## Linux Firewall diagnostics
+## Windows Firewall diagnostics
 
-[![Linux Firewall restart diagnostic](https://raw.githubusercontent.com/memegeko/aero7-control-panel-/main/docs/screenshots/control-panel-firewall.png)](https://raw.githubusercontent.com/memegeko/aero7-control-panel-/main/docs/screenshots/control-panel-firewall.png)
+[![Windows Firewall restart diagnostic](https://raw.githubusercontent.com/memegeko/aero7-control-panel-/main/docs/screenshots/control-panel-firewall.png)](https://raw.githubusercontent.com/memegeko/aero7-control-panel-/main/docs/screenshots/control-panel-firewall.png)
 
 This capture shows the safe restart-required state used when a kernel update
 has left the running firewall backend without matching modules. Mutation

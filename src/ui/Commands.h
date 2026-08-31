@@ -4,34 +4,27 @@
 #include <QStringList>
 
 // ---------------------------------------------------------------------------
-// External launchers shared by MainWindow's task links and the detail pages'
-// sidebar links. Task and sidebar links with no dedicated page in this app hand
-// off to the real KDE module, the way the Windows Control Panel opens an applet.
+// Approved standalone launchers shared by MainWindow and detail pages.
 // ---------------------------------------------------------------------------
 
-// Command for opening a KDE System Settings module, e.g. kcm("kcm_kscreen").
-inline QStringList kcm(const char *module)
-{
-    return { QStringLiteral("kcmshell6"), QString::fromLatin1(module) };
-}
-
-// Desktop Gadgets links hook into KDE Plasma's real widget panels. The
-// "Desktop Gadgets" heading and "Add gadgets to the desktop" link toggle
-// Plasma's widget explorer (the "Add or Manage widgets" panel) over D-Bus;
-// "Get more gadgets online" opens the Get-New-Widgets download dialog.
+// Desktop Gadgets uses Aero7's native gadget host and gallery. This avoids
+// exposing Plasma edit mode and keeps the Control Panel entry aligned with the
+// gadget package shipped by Aero7.
 inline const QStringList kWidgetExplorerCmd = {
-    QStringLiteral("qdbus6"), QStringLiteral("org.kde.plasmashell"),
-    QStringLiteral("/PlasmaShell"),
-    QStringLiteral("org.kde.PlasmaShell.toggleWidgetExplorer")
+    QStringLiteral("aero7-gadget-host"), QStringLiteral("--gallery")
 };
 inline const QStringList kGetWidgetsCmd = {
-    QStringLiteral("knewstuff-dialog6"),
-    QStringLiteral("/usr/share/knsrcfiles/plasmoids.knsrc")
+    QStringLiteral("aero7-gadget-host"), QStringLiteral("--gallery")
 };
 
 // "Device Manager" links launch the standalone devmgmt program.
 inline const QStringList kDeviceManagerCmd = {
-    QStringLiteral("devmgmt")
+    QStringLiteral("aero7-device-manager")
+};
+
+// Administrative Tools opens Aero7's Computer Management console.
+inline const QStringList kComputerManagementCmd = {
+    QStringLiteral("aero7-compmgmt")
 };
 
 // Programs Center is independently packaged and optional. Launching by name

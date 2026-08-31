@@ -9,8 +9,10 @@ repository, and website remains in each project's own repository.
 
 - [Control Panel Guide](Control-Panel-Guide) — categories, native pages,
   buttons, permissions, limitations, and troubleshooting.
-- [Complete Settings Reference](Settings-Reference) — all 69 searchable
-  settings, what each setting does, its original KDE name, backend, and status.
+- [Complete Settings Reference](Settings-Reference) — all 71 searchable
+  settings, what each setting does, its KDE Plasma name, backend, and status.
+- [Windows 7 Parity](Windows-7-Parity) — all 45 Windows 7 applets, current
+  implementation status, and placement of KDE/Wayland-only settings.
 - [Backends and Permissions](Backends-and-Permissions) — the Linux services,
   commands, KDE modules, and privilege boundaries behind Control Panel.
 - [Installation and Updates](Installation-and-Updates) — install or update the
@@ -21,7 +23,9 @@ repository, and website remains in each project's own repository.
 ## Finding a setting
 
 Open **Control Panel** from the Start menu and use **Search Control Panel**.
-Search accepts the public Aero7 setting name as well as the original KDE name.
+Windows 7 names are the fresh-install default. Search accepts the Windows 7
+name as well as the KDE Plasma name. Use **View by > Use KDE Plasma names...**
+to switch the visible labels without changing any backend.
 Control Panel search results remain inside the Control Panel hierarchy.
 
 The Start menu can also return Control Panel settings under its **Settings**
@@ -37,8 +41,8 @@ command (`Ctrl+F`).
   Linux service or configuration directly.
 - **Aero7 partial** means the main workflow is provided by Control Panel while
   advanced functions use a focused system component.
-- **KDE bridge** means Control Panel opens one specific KDE Control Module. It
-  never intentionally opens the generic System Settings home page.
+- **Aero7 native editor** means Control Panel writes established Plasma/KWin/
+  KIO configuration through its own property sheet and opens no KDE settings UI.
 - **Unavailable** controls are visibly disabled until a correct, safe backend
   exists. They are not decorative dead links.
 

@@ -14,7 +14,7 @@
 #include <QPixmap>
 #include <QPainter>
 #include <QPainterPath>
-#include <QFileDialog>
+#include "Aero7FileDialog.h"
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QProcess>
@@ -146,7 +146,7 @@ QList<UserAccountsPage::Account> UserAccountsPage::gatherAccounts()
 QList<SidebarLink> UserAccountsPage::sidebarLinks()
 {
     return {
-        Nav::command("Advanced account settings", kcm("kcm_users")),
+        Nav::to("Advanced account settings", PageId::UserAccounts),
         Nav::to("Review administrator approval", PageId::SecurityMaintenance),
     };
 }
@@ -224,7 +224,8 @@ UserAccountsPage::UserAccountsPage(QScrollArea *sidebar, QWidget *parent)
         if (!terminal.isEmpty())
             QProcess::startDetached(terminal, {"-e", "passwd"});
         else
-            launchDetached(this, {"kcmshell6", "kcm_users"});
+            QMessageBox::warning(this, QStringLiteral("User Accounts"),
+                                 QStringLiteral("A password terminal is not installed."));
     });
     addTask("Change your picture", [this]() { changePicture(); });
     addTask("Change your account name", [this, acct]() { changeDisplayName(acct); });
@@ -267,9 +268,9 @@ UserAccountsPage::UserAccountsPage(QScrollArea *sidebar, QWidget *parent)
 
 void UserAccountsPage::changePicture()
 {
-    const QString source = QFileDialog::getOpenFileName(
-        this, "Choose an account picture", QDir::homePath(),
-        "Images (*.png *.jpg *.jpeg *.webp *.bmp);;All files (*)");
+    const QString source = Aero7FileDialog::openFile(
+        this, QStringLiteral("control-user-picture"),
+        QStringLiteral("Images (*.png *.jpg *.jpeg *.webp *.bmp);;All files (*)"));
     if (source.isEmpty())
         return;
     QImage image(source);

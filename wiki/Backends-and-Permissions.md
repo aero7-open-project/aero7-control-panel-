@@ -17,7 +17,7 @@ owns each kind of change and when administrator approval is expected.
 | Power | UPower and `power-profiles-daemon` | Battery details and supported power modes |
 | Computer name | `hostnamectl` | Validated hostname changes |
 | Date and time | authenticated system tools | Clock, time zone, and Internet-time configuration |
-| Desktop settings | focused KDE Control Modules through `kcmshell6` | Individual Plasma settings not yet implemented natively |
+| Desktop settings | Plasma/KWin/KIO configuration and D-Bus services | Aero7 property sheets for desktop-owned settings |
 | User picture | `~/.face.icon` | Standard account image used by the login screen and desktop |
 
 ## When administrator approval appears
@@ -32,22 +32,17 @@ including:
   account's details.
 
 Per-user appearance, wallpaper, sound volume, notification sounds, search,
-window behavior, shortcuts, and most KDE-module settings normally do not need
+window behavior, shortcuts, and most Plasma settings normally do not need
 administrator approval.
 
-## Focused KDE bridges
+## Native Plasma-backed editors
 
-A **KDE bridge** launches one module directly as:
+An **Aero7 native editor** presents a Windows-style property sheet and writes
+the established Plasma/KWin/KIO configuration. The KDE System Settings shell
+and individual KCM user interfaces are not opened. Historical KCM identifiers
+remain metadata for upstream documentation and debugging.
 
-```text
-kcmshell6 <module-id>
-```
-
-Control Panel checks the installed module list first. If an optional module is
-missing, it shows a clear message. This preserves a single Control Panel entry
-point without hiding the real implementation.
-
-Original KDE names and module identifiers are listed in the
+KDE Plasma names and module identifiers are listed in the
 [Settings Reference](Settings-Reference). They remain stable documentation and
 troubleshooting terms even if Aero7 uses friendlier public wording.
 

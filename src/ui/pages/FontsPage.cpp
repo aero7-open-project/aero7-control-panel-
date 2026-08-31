@@ -179,10 +179,10 @@ QList<FontsPage::Family> FontsPage::gatherFamilies()
 QList<SidebarLink> FontsPage::sidebarLinks()
 {
     return {
-        Nav::command("Font settings", kcm("kcm_fonts")),
+        Nav::to("Font settings", PageId::Fonts),
         Nav::command("Get more font information online",
                      {"xdg-open", "https://docs.kde.org/stable5/en/plasma-workspace/kcontrol/fontinst/"}),
-        Nav::command("Adjust ClearType text", kcm("kcm_fonts")),
+        Nav::to("Adjust ClearType text", PageId::DisplaySettings),
         Nav::command("Find a character", {"kcharselect"}),
         Nav::to("Change font size", PageId::DisplaySettings),
     };

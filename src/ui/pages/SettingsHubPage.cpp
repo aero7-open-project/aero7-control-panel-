@@ -1,7 +1,9 @@
 #include "SettingsHubPage.h"
 #include "IconHelper.h"
 #include "LinkLabel.h"
+#include "NativeSettingsDialog.h"
 #include "Win7Ui.h"
+#include "Branding.h"
 
 #include <QFrame>
 #include <QHBoxLayout>
@@ -9,20 +11,6 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
-
-namespace {
-
-QString statusColor(ReplacementStatus status)
-{
-    switch (status) {
-    case ReplacementStatus::Native:              return "#2E7D32";
-    case ReplacementStatus::Partial:             return "#9A6700";
-    case ReplacementStatus::CompatibilityBridge: return "#555555";
-    }
-    return "#555555";
-}
-
-} // namespace
 
 SettingsHubPage::SettingsHubPage(SettingsSection section, QScrollArea *sidebar,
                                  const QString &titleOverride,
@@ -67,8 +55,11 @@ SettingsHubPage::SettingsHubPage(SettingsSection section, QScrollArea *sidebar,
         text->setContentsMargins(0, 0, 0, 0);
         text->setSpacing(1);
 
-        auto *name = new LinkLabel(setting.aeroName);
+        const QString displayName = Branding::useWindowsNames()
+            ? setting.aeroName : setting.kdeName;
+        auto *name = new LinkLabel(displayName);
         name->setObjectName(QStringLiteral("setting-link-") + setting.key);
+        name->setProperty("windowsName", setting.aeroName);
         name->setProperty("originalKdeName", setting.kdeName);
         name->setProperty("kdeModule", setting.kdeModule);
         Win7::setPointSize(name, 10);
@@ -80,37 +71,18 @@ SettingsHubPage::SettingsHubPage(SettingsSection section, QScrollArea *sidebar,
         description->setWordWrap(true);
         text->addWidget(description);
 
-        const QString original = setting.kdeName.isEmpty()
-            ? QStringLiteral("Original KDE name: not applicable")
-            : QStringLiteral("Original KDE name: %1%2")
-                  .arg(setting.kdeName,
-                       setting.kdeModule.isEmpty()
-                           ? QString()
-                           : QStringLiteral("  ·  Module: %1").arg(setting.kdeModule));
-        auto *origin = Win7::label(original, 8, "#666666");
-        origin->setTextInteractionFlags(Qt::TextSelectableByMouse);
-        text->addWidget(origin);
         h->addLayout(text, 1);
 
-        auto *right = new QVBoxLayout;
-        right->setContentsMargins(0, 0, 0, 0);
-        right->setSpacing(4);
-        auto *status = Win7::label(SettingsCatalog::statusLabel(setting.status),
-                                   8, statusColor(setting.status).toUtf8().constData());
-        status->setAlignment(Qt::AlignRight);
-        right->addWidget(status);
-        auto *button = new QPushButton(
-            setting.status == ReplacementStatus::CompatibilityBridge
-                ? QStringLiteral("Open setting") : QStringLiteral("Change settings"));
+        auto *button = new QPushButton(QStringLiteral("Change settings"));
         button->setObjectName(QStringLiteral("setting-action-") + setting.key);
         button->setProperty("settingKey", setting.key);
+        button->setProperty("windowsName", setting.aeroName);
         button->setProperty("originalKdeName", setting.kdeName);
         button->setProperty("kdeModule", setting.kdeModule);
         button->setCursor(Qt::PointingHandCursor);
         connect(button, &QPushButton::clicked, this,
                 [this, setting]() { activate(setting); });
-        right->addWidget(button);
-        h->addLayout(right, 0);
+        h->addWidget(button, 0, Qt::AlignVCenter);
 
         content->addWidget(row);
         content->addSpacing(6);
@@ -128,7 +100,11 @@ void SettingsHubPage::activate(const SettingDefinition &setting)
     case SettingsBackend::Aero7Applet:
         emit appletRequested(setting.applet);
         break;
-    case SettingsBackend::KdeModule:
+    case SettingsBackend::Aero7NativeEditor: {
+        NativeSettingsDialog dialog(setting, this);
+        dialog.exec();
+        break;
+    }
     case SettingsBackend::ExternalCommand:
         launchDetached(this, setting.command);
         break;

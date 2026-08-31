@@ -1,12 +1,21 @@
 #include "SettingsHubPage.h"
+#include "Branding.h"
 
 #include <QApplication>
+#include <QLabel>
 #include <QPushButton>
+#include <QSettings>
 #include <QSet>
+#include <QStandardPaths>
 
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("aero7-tests"));
+    QCoreApplication::setApplicationName(QStringLiteral("control-panel-naming"));
+    QStandardPaths::setTestModeEnabled(true);
+    QSettings().clear();
+    Branding::setUseWindowsNames(true);
 
     const QList<SettingsSection> sections = {
         SettingsSection::Appearance, SettingsSection::Display,
@@ -46,5 +55,20 @@ int main(int argc, char **argv)
     if (rows != SettingsCatalog::all().size()
         || renderedKeys.size() != SettingsCatalog::all().size())
         return 3;
+
+    SettingsHubPage windowsPage(SettingsSection::SecurityMaintenance, nullptr);
+    auto *windowsUpdate = windowsPage.findChild<QLabel *>(
+        QStringLiteral("setting-link-updates"));
+    if (!windowsUpdate || windowsUpdate->text() != QStringLiteral("Windows Update"))
+        return 4;
+
+    Branding::setUseWindowsNames(false);
+    SettingsHubPage kdePage(SettingsSection::SecurityMaintenance, nullptr);
+    auto *softwareUpdate = kdePage.findChild<QLabel *>(
+        QStringLiteral("setting-link-updates"));
+    if (!softwareUpdate || softwareUpdate->text() != QStringLiteral("Software Update"))
+        return 5;
+
+    QSettings().clear();
     return 0;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include <QStringList>
+#include <QString>
 #include "PageId.h"
 
 class QScrollArea;
@@ -10,12 +10,8 @@ class QVBoxLayout;
 // The "Ease of Access Center" detail page, a Control-Panel rendering of the
 // Windows 7 Ease of Access Center.
 //
-// No standalone accessibility apps (magnifier, narrator, on-screen keyboard) are
-// assumed to be installed, so, like the real Control Panel, whose entries open
-// sub-dialogs, every tool and setting here opens the matching KDE settings
-// module (kcm_access, kcm_kwin_effects for the screen magnifier, kcm_colors for
-// high contrast, kcm_mouse, kcm_cursortheme), which are always present with
-// Plasma.
+// Every link stays inside an Aero7-owned property sheet. Plasma/KWin remain
+// implementation backends only.
 class EaseOfAccessPage : public QWidget {
     Q_OBJECT
 
@@ -26,7 +22,7 @@ public:
     static QList<SidebarLink> sidebarSeeAlso();
 
 private:
-    // Append an icon + blue link that opens `cmd` when clicked.
+    void openSetting(const QString &key);
     void addSettingLink(QVBoxLayout *into, const QString &iconName,
-                        const QString &text, const QStringList &cmd);
+                        const QString &text, const QString &key);
 };

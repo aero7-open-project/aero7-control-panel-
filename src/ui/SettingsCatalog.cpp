@@ -5,16 +5,16 @@
 
 namespace {
 
-SettingDefinition kde(const char *key, const char *aero, const char *original,
-                      const char *module, SettingsSection section,
-                      const char *description, const char *icon)
+SettingDefinition nativeEditor(const char *key, const char *aero,
+                               const char *original, const char *module,
+                               SettingsSection section,
+                               const char *description, const char *icon)
 {
     return { QString::fromLatin1(key), QString::fromUtf8(aero),
              QString::fromUtf8(original), QString::fromLatin1(module), section,
              QString::fromUtf8(description), QString::fromLatin1(icon),
-             SettingsBackend::KdeModule,
-             ReplacementStatus::CompatibilityBridge, PageId::None, {},
-             kcm(module) };
+             SettingsBackend::Aero7NativeEditor,
+             ReplacementStatus::Native, PageId::None, {}, {} };
 }
 
 SettingDefinition page(const char *key, const char *aero, const char *original,
@@ -69,125 +69,166 @@ const QList<SettingDefinition> &all()
              PageId::Personalization, SettingsSection::Appearance,
              "Choose the Aero7 theme and desktop appearance.", "preferences-desktop-theme",
              ReplacementStatus::Native, "kcm_lookandfeel"),
-        kde("colors", "Window Color", "Colors", "kcm_colors", SettingsSection::Appearance,
-            "Choose window and application colors.", "preferences-desktop-color"),
-        kde("application-style", "Application Appearance", "Application Style", "kcm_style", SettingsSection::Appearance,
-            "Change the appearance and behavior of application controls.", "preferences-desktop-theme"),
-        kde("desktop-style", "Desktop Style", "Plasma Style", "kcm_desktoptheme", SettingsSection::Appearance,
-            "Change the desktop shell style.", "preferences-desktop-plasma-theme"),
-        kde("icons", "Icons", "Icons", "kcm_icons", SettingsSection::Appearance,
-            "Choose the icon theme used by applications and the desktop.", "preferences-desktop-icons"),
-        kde("pointers", "Mouse Pointers", "Pointers", "kcm_cursortheme", SettingsSection::Appearance,
-            "Choose the pointer design and size.", "preferences-desktop-cursors"),
-        kde("wallpaper", "Desktop Background", "Wallpaper", "kcm_wallpaper", SettingsSection::Appearance,
-            "Choose the desktop background image.", "preferences-desktop-wallpaper"),
-        kde("fonts", "Fonts", "Fonts", "kcm_fonts", SettingsSection::Appearance,
-            "Change interface fonts and font rendering.", "preferences-desktop-font"),
-        kde("font-management", "Font Management", "Font Management", "kcm_fontinst", SettingsSection::Appearance,
-            "Install, remove and preview fonts.", "preferences-desktop-font-installer"),
-        kde("splash", "Welcome Animation", "Splash Screen", "kcm_splashscreen", SettingsSection::Appearance,
-            "Choose the desktop-session loading animation.", "preferences-desktop-splash"),
+        page("colors", "Window Color", "Colors", PageId::Personalization,
+             SettingsSection::Appearance,
+             "Change Aero glass color, intensity and transparency.",
+             "preferences-desktop-color", ReplacementStatus::Native,
+             "kcm_colors"),
+        page("application-style", "Aero7 Appearance", "Application Style",
+             PageId::Personalization, SettingsSection::Appearance,
+             "Use the supported Aero7 appearance for programs and windows.",
+             "preferences-desktop-theme", ReplacementStatus::Native,
+             "kcm_style"),
+        page("desktop-style", "Aero7 Desktop Theme", "Plasma Style",
+             PageId::Personalization, SettingsSection::Appearance,
+             "Choose an installed Aero7 desktop theme.",
+             "preferences-desktop-plasma-theme", ReplacementStatus::Native,
+             "kcm_desktoptheme"),
+        page("icons", "Desktop Icons", "Icons", PageId::Personalization,
+             SettingsSection::Appearance,
+             "Choose which Aero7 icons appear on the desktop.",
+             "preferences-desktop-icons", ReplacementStatus::Partial,
+             "kcm_icons"),
+        page("pointers", "Mouse Pointers", "Pointers", PageId::Personalization,
+             SettingsSection::Appearance,
+             "Review the Aero7 pointer design used by the desktop.",
+             "preferences-desktop-cursors", ReplacementStatus::Partial,
+             "kcm_cursortheme"),
+        page("wallpaper", "Desktop Background", "Wallpaper",
+             PageId::Personalization, SettingsSection::Appearance,
+             "Choose the desktop picture and how it fills the screen.",
+             "preferences-desktop-wallpaper", ReplacementStatus::Native,
+             "kcm_wallpaper"),
+        page("fonts", "Fonts", "Fonts", PageId::Fonts,
+             SettingsSection::Appearance,
+             "Preview, install and remove fonts.",
+             "preferences-desktop-font", ReplacementStatus::Native,
+             "kcm_fonts"),
+        page("font-management", "Font Management", "Font Management",
+             PageId::Fonts, SettingsSection::Appearance,
+             "Preview, install and remove fonts.",
+             "preferences-desktop-font-installer", ReplacementStatus::Native,
+             "kcm_fontinst"),
+        page("splash", "Welcome Animation", "Splash Screen",
+             PageId::Personalization, SettingsSection::Appearance,
+             "Use the Aero7 welcome animation supplied by the selected theme.",
+             "preferences-desktop-splash", ReplacementStatus::Native,
+             "kcm_splashscreen"),
 
         // Display
-        kde("display", "Screen Resolution", "Display Configuration", "kcm_kscreen", SettingsSection::Display,
-            "Arrange displays and change resolution, scale and refresh rate.", "preferences-desktop-display"),
-        kde("night-light", "Night Light", "Night Light", "kcm_nightlight", SettingsSection::Display,
+        page("display", "Screen Resolution", "Display Configuration",
+             PageId::DisplaySettings, SettingsSection::Display,
+             "Arrange displays and change resolution, scale and refresh rate.",
+             "preferences-desktop-display", ReplacementStatus::Native, "kcm_kscreen"),
+        nativeEditor("night-light", "Night Light", "Night Light", "kcm_nightlight", SettingsSection::Display,
             "Reduce blue light according to a schedule.", "redshift-status-on"),
-        kde("day-night", "Day and Night Schedule", "Day-Night Cycle", "kcm_nighttime", SettingsSection::Display,
+        nativeEditor("day-night", "Day and Night Schedule", "Day-Night Cycle", "kcm_nighttime", SettingsSection::Display,
             "Set the times used by automatic light and dark behavior.", "weather-clear-night"),
 
         // Taskbar, Start menu and general desktop behavior
-        kde("workspace", "Desktop Behavior", "General Behavior", "kcm_workspace", SettingsSection::TaskbarStartMenu,
-            "Choose click behavior, selection markers and desktop navigation.", "preferences-desktop"),
-        kde("search", "Start Menu Search", "Plasma Search", "kcm_plasmasearch", SettingsSection::TaskbarStartMenu,
-            "Choose which search providers appear in the Start menu.", "system-search"),
-        kde("shortcuts", "Keyboard Shortcuts", "Shortcuts", "kcm_keys", SettingsSection::TaskbarStartMenu,
-            "Review and change desktop keyboard shortcuts.", "preferences-desktop-keyboard-shortcuts"),
-        kde("notifications", "Notification Area", "Notifications", "kcm_notifications", SettingsSection::TaskbarStartMenu,
-            "Choose notification behavior and application alerts.", "preferences-desktop-notification"),
+        page("workspace", "Taskbar Appearance", "General Behavior",
+             PageId::TaskbarStartMenu, SettingsSection::TaskbarStartMenu,
+             "Lock, resize or automatically hide the Aero7 taskbar.",
+             "preferences-desktop", ReplacementStatus::Native,
+             "kcm_workspace"),
+        page("search", "Start Menu", "Plasma Search",
+             PageId::TaskbarStartMenu, SettingsSection::TaskbarStartMenu,
+             "Choose recent-program and Jump List behavior in the Start menu.",
+             "system-search", ReplacementStatus::Native,
+             "kcm_plasmasearch"),
+        page("shortcuts", "Taskbar Buttons", "Shortcuts",
+             PageId::TaskbarStartMenu, SettingsSection::TaskbarStartMenu,
+             "Choose how taskbar buttons combine and display labels.",
+             "preferences-desktop-keyboard-shortcuts", ReplacementStatus::Native,
+             "kcm_keys"),
+        page("notifications", "Notification Area", "Notifications",
+             PageId::TaskbarStartMenu, SettingsSection::TaskbarStartMenu,
+             "Review notification-area behavior and icon overflow.",
+             "preferences-desktop-notification", ReplacementStatus::Partial,
+             "kcm_notifications"),
 
         // Window behavior
-        kde("window-decoration", "Window Borders", "Window Decorations", "kcm_kwindecoration", SettingsSection::WindowBehavior,
+        nativeEditor("window-decoration", "Window Borders", "Window Decorations", "kcm_kwindecoration", SettingsSection::WindowBehavior,
             "Choose title bars, borders and window buttons.", "preferences-system-windows"),
-        kde("window-behavior", "Window Behavior", "Window Behavior", "kcm_kwinoptions", SettingsSection::WindowBehavior,
+        nativeEditor("window-behavior", "Window Behavior", "Window Behavior", "kcm_kwinoptions", SettingsSection::WindowBehavior,
             "Configure focus, movement and title-bar actions.", "preferences-system-windows-behavior"),
-        kde("window-rules", "Program Window Rules", "Window Rules", "kcm_kwinrules", SettingsSection::WindowBehavior,
+        nativeEditor("window-rules", "Program Window Rules", "Window Rules", "kcm_kwinrules", SettingsSection::WindowBehavior,
             "Remember or force settings for individual program windows.", "preferences-system-windows-actions"),
-        kde("task-switcher", "Switch Between Windows", "Task Switcher", "kcm_kwintabbox", SettingsSection::WindowBehavior,
+        nativeEditor("task-switcher", "Switch Between Windows", "Task Switcher", "kcm_kwintabbox", SettingsSection::WindowBehavior,
             "Configure the Alt+Tab window switcher.", "preferences-system-windows"),
-        kde("effects", "Visual Effects", "Desktop Effects", "kcm_kwin_effects", SettingsSection::WindowBehavior,
+        nativeEditor("effects", "Visual Effects", "Desktop Effects", "kcm_kwin_effects", SettingsSection::WindowBehavior,
             "Enable and configure desktop visual effects.", "preferences-desktop-effects"),
-        kde("animations", "Animations", "Animations", "kcm_animations", SettingsSection::WindowBehavior,
+        nativeEditor("animations", "Animations", "Animations", "kcm_animations", SettingsSection::WindowBehavior,
             "Change animation speed and style.", "preferences-desktop-effects"),
-        kde("screen-edges", "Screen Edges", "Screen Edges", "kcm_kwinscreenedges", SettingsSection::WindowBehavior,
+        nativeEditor("screen-edges", "Screen Edges", "Screen Edges", "kcm_kwinscreenedges", SettingsSection::WindowBehavior,
             "Assign actions to screen corners and edges.", "preferences-desktop-screen-edges"),
-        kde("virtual-desktops", "Multiple Desktops", "Virtual Desktops", "kcm_kwin_virtualdesktops", SettingsSection::WindowBehavior,
+        nativeEditor("virtual-desktops", "Multiple Desktops", "Virtual Desktops", "kcm_kwin_virtualdesktops", SettingsSection::WindowBehavior,
             "Configure the number and layout of virtual desktops.", "preferences-desktop-virtual"),
-        kde("activities", "Activities", "Activities", "kcm_activities", SettingsSection::WindowBehavior,
+        nativeEditor("activities", "Activities", "Activities", "kcm_activities", SettingsSection::WindowBehavior,
             "Keep separate groups of windows and desktop state.", "preferences-activities"),
-        kde("kwin-scripts", "Window Manager Add-ons", "KWin Scripts", "kcm_kwin_scripts", SettingsSection::WindowBehavior,
+        nativeEditor("kwin-scripts", "Window Manager Add-ons", "KWin Scripts", "kcm_kwin_scripts", SettingsSection::WindowBehavior,
             "Manage scripts that extend window behavior.", "preferences-plugin"),
-        kde("x11-support", "Legacy App Keyboard Access", "Legacy X11 App Support", "kcm_kwinxwayland", SettingsSection::WindowBehavior,
+        nativeEditor("x11-support", "Legacy App Keyboard Access", "Legacy X11 App Support", "kcm_kwinxwayland", SettingsSection::WindowBehavior,
             "Choose which keys legacy X11 programs may receive.", "xorg"),
 
         // Input
-        kde("mouse", "Mouse", "Mouse", "kcm_mouse", SettingsSection::InputDevices,
+        nativeEditor("mouse", "Mouse", "Mouse", "kcm_mouse", SettingsSection::InputDevices,
             "Configure buttons, speed and scrolling.", "input-mouse"),
-        kde("keyboard", "Keyboard", "Keyboard", "kcm_keyboard", SettingsSection::InputDevices,
+        nativeEditor("keyboard", "Keyboard", "Keyboard", "kcm_keyboard", SettingsSection::InputDevices,
             "Configure keyboard hardware and layouts.", "input-keyboard"),
-        kde("touchpad", "Touchpad", "Touchpad", "kcm_touchpad", SettingsSection::InputDevices,
+        nativeEditor("touchpad", "Touchpad", "Touchpad", "kcm_touchpad", SettingsSection::InputDevices,
             "Configure touchpad taps, gestures and scrolling.", "input-touchpad"),
-        kde("touchscreen", "Touchscreen", "Touchscreen", "kcm_touchscreen", SettingsSection::InputDevices,
+        nativeEditor("touchscreen", "Touchscreen", "Touchscreen", "kcm_touchscreen", SettingsSection::InputDevices,
             "Map and configure touchscreen input.", "input-touchscreen"),
-        kde("touchscreen-gestures", "Touchscreen Gestures", "Touchscreen Gestures", "kcm_kwintouchscreen", SettingsSection::InputDevices,
+        nativeEditor("touchscreen-gestures", "Touchscreen Gestures", "Touchscreen Gestures", "kcm_kwintouchscreen", SettingsSection::InputDevices,
             "Configure touchscreen gestures handled by the window manager.", "input-touchscreen"),
-        kde("tablet", "Pen and Drawing Tablet", "Drawing Tablet", "kcm_tablet", SettingsSection::InputDevices,
+        nativeEditor("tablet", "Pen and Drawing Tablet", "Drawing Tablet", "kcm_tablet", SettingsSection::InputDevices,
             "Configure drawing tablets and pens.", "input-tablet"),
-        kde("game-controller", "Game Controller", "Game Controller", "kcm_gamecontroller", SettingsSection::InputDevices,
+        nativeEditor("game-controller", "Game Controller", "Game Controller", "kcm_gamecontroller", SettingsSection::InputDevices,
             "Test and configure game controllers.", "input-gaming"),
-        kde("virtual-keyboard", "On-Screen Keyboard", "Virtual Keyboard", "kcm_virtualkeyboard", SettingsSection::InputDevices,
+        nativeEditor("virtual-keyboard", "On-Screen Keyboard", "Virtual Keyboard", "kcm_virtualkeyboard", SettingsSection::InputDevices,
             "Choose the virtual keyboard used on screen.", "input-keyboard-virtual"),
 
         // Sound
         applet("sound", "Sound", "Sound", "sound", SettingsSection::Sound,
                "Manage playback, recording, sound schemes and communications.", "preferences-desktop-sound",
                ReplacementStatus::Native, "kcm_pulseaudio"),
-        kde("sound-theme", "System Sounds", "System Sounds", "kcm_soundtheme", SettingsSection::Sound,
+        nativeEditor("sound-theme", "System Sounds", "System Sounds", "kcm_soundtheme", SettingsSection::Sound,
             "Choose the notification sound theme.", "preferences-desktop-sound"),
 
         // Network
         page("network-status", "Network and Sharing Center", "Connections", PageId::NetworkSharing,
              SettingsSection::Network, "View active connections and network information.", "preferences-system-network",
              ReplacementStatus::Native, "kcm_networkmanagement"),
-        kde("network-connections", "Change Adapter Settings", "Connections", "kcm_networkmanagement", SettingsSection::Network,
+        nativeEditor("network-connections", "Change Adapter Settings", "Connections", "kcm_networkmanagement", SettingsSection::Network,
             "Create and edit wired, wireless and VPN connections.", "network-wired"),
-        kde("proxy", "Proxy Settings", "Proxy", "kcm_proxy", SettingsSection::Network,
+        nativeEditor("proxy", "Proxy Settings", "Proxy", "kcm_proxy", SettingsSection::Network,
             "Configure proxy servers used by applications.", "preferences-system-network-proxy"),
-        kde("network-preferences", "Connection Preferences", "Connection Preferences", "kcm_netpref", SettingsSection::Network,
+        nativeEditor("network-preferences", "Connection Preferences", "Connection Preferences", "kcm_netpref", SettingsSection::Network,
             "Configure generic connection behavior and timeouts.", "preferences-system-network"),
 
         // Power
         page("power", "Power Options", "Power Management", PageId::PowerOptions,
              SettingsSection::Power, "Choose a power plan and energy profile.", "preferences-system-power-management",
              ReplacementStatus::Native, "kcm_powerdevilprofilesconfig"),
-        kde("power-details", "Advanced Power Settings", "Power Management", "kcm_powerdevilprofilesconfig", SettingsSection::Power,
+        nativeEditor("power-details", "Advanced Power Settings", "Power Management", "kcm_powerdevilprofilesconfig", SettingsSection::Power,
             "Configure sleep, screen energy, lid and power-button behavior.", "preferences-system-power-management"),
-        kde("mobile-power", "Battery and Energy", "Energy", "kcm_mobile_power", SettingsSection::Power,
+        nativeEditor("mobile-power", "Battery and Energy", "Energy", "kcm_mobile_power", SettingsSection::Power,
             "Configure energy settings on mobile devices.", "battery"),
 
         // Accounts
         page("accounts", "User Accounts", "Users", PageId::UserAccounts,
              SettingsSection::Accounts, "View and manage local user accounts.", "system-users",
              ReplacementStatus::Native, "kcm_users"),
-        kde("online-accounts", "Online Accounts", "Online Accounts", "kcm_kaccounts", SettingsSection::Accounts,
+        nativeEditor("online-accounts", "Online Accounts", "Online Accounts", "kcm_kaccounts", SettingsSection::Accounts,
             "Connect supported online services to the desktop.", "preferences-online-accounts"),
         // Region and language
         applet("date-time", "Date and Time", "Date & Time", "datetime", SettingsSection::RegionLanguage,
                "Set the clock, time zone, additional clocks and Internet time.", "preferences-system-time",
                ReplacementStatus::Partial, "kcm_clock"),
-        kde("region-language", "Region and Language", "Region & Language", "kcm_regionandlang", SettingsSection::RegionLanguage,
+        nativeEditor("region-language", "Region and Language", "Region & Language", "kcm_regionandlang", SettingsSection::RegionLanguage,
             "Set language, number, currency and time formats.", "preferences-desktop-locale"),
-        kde("spell-check", "Spelling", "Spell Check", "kcmspellchecking", SettingsSection::RegionLanguage,
+        nativeEditor("spell-check", "Spelling", "Spell Check", "kcmspellchecking", SettingsSection::RegionLanguage,
             "Choose spell-check dictionaries and options.", "tools-check-spelling"),
 
         // Applications and file behavior
@@ -198,57 +239,63 @@ const QList<SettingDefinition> &all()
          QStringLiteral("system-software-install"),
          SettingsBackend::ExternalCommand, ReplacementStatus::Native,
          PageId::None, QString(), kProgramsCenterCmd},
-        kde("default-apps", "Default Programs", "Default Applications", "kcm_componentchooser", SettingsSection::Applications,
+        nativeEditor("default-apps", "Default Programs", "Default Applications", "kcm_componentchooser", SettingsSection::Applications,
             "Choose the default browser, mail, terminal and other programs.", "preferences-desktop-default-applications"),
-        kde("file-associations", "File Type Associations", "File Associations", "kcm_filetypes", SettingsSection::Applications,
+        nativeEditor("file-associations", "File Type Associations", "File Associations", "kcm_filetypes", SettingsSection::Applications,
             "Choose which program opens each file type.", "preferences-desktop-filetype-association"),
-        kde("locations", "Personal Folder Locations", "Locations", "kcm_desktoppaths", SettingsSection::Applications,
+        nativeEditor("locations", "Personal Folder Locations", "Locations", "kcm_desktoppaths", SettingsSection::Applications,
             "Choose the locations of Documents, Downloads and other folders.", "folder-home"),
-        kde("device-actions", "Removable Device Actions", "Device Actions", "kcm_solid_actions", SettingsSection::Applications,
+        nativeEditor("device-actions", "Removable Device Actions", "Device Actions", "kcm_solid_actions", SettingsSection::Applications,
             "Choose actions offered when media and devices are connected.", "device-notifier"),
 
         // Search and history
-        kde("file-search", "File Search and Indexing", "File Search", "kcm_baloofile", SettingsSection::SearchHistory,
-            "Choose indexed locations and file-search behavior.", "baloo"),
-        kde("recent-files", "Recent Items", "Recent Files", "kcm_recentFiles", SettingsSection::SearchHistory,
+        page("folder-options", "Folder Options", "Folder Options",
+             PageId::FolderOptions, SettingsSection::SearchHistory,
+             "Choose how folder windows display, open and search files.",
+             "folder-open", ReplacementStatus::Native),
+        page("file-search", "File Search and Indexing", "File Search",
+             PageId::FolderOptions, SettingsSection::SearchHistory,
+             "Choose file-index and content-search behavior.", "baloo",
+             ReplacementStatus::Native, "kcm_baloofile"),
+        nativeEditor("recent-files", "Recent Items", "Recent Files", "kcm_recentFiles", SettingsSection::SearchHistory,
             "Manage file activity history and exclusions.", "document-open-recent"),
-        kde("web-shortcuts", "Search Keywords", "Web Search Keywords", "kcm_webshortcuts", SettingsSection::SearchHistory,
+        nativeEditor("web-shortcuts", "Search Keywords", "Web Search Keywords", "kcm_webshortcuts", SettingsSection::SearchHistory,
             "Configure short keywords for web searches.", "preferences-web-browser-shortcuts"),
 
         // Accessibility
         page("ease", "Ease of Access Center", "Accessibility", PageId::EaseOfAccess,
              SettingsSection::Accessibility, "Make the computer easier to see, hear and operate.", "preferences-desktop-accessibility",
              ReplacementStatus::Partial, "kcm_access"),
-        kde("accessibility-details", "Advanced Accessibility", "Accessibility", "kcm_access", SettingsSection::Accessibility,
+        nativeEditor("accessibility-details", "Advanced Accessibility", "Accessibility", "kcm_access", SettingsSection::Accessibility,
             "Configure keyboard, screen-reader and visual accessibility.", "preferences-desktop-accessibility"),
 
         // Startup and shutdown
-        kde("autostart", "Startup Programs", "Autostart", "kcm_autostart", SettingsSection::StartupShutdown,
+        nativeEditor("autostart", "Startup Programs", "Autostart", "kcm_autostart", SettingsSection::StartupShutdown,
             "Choose programs that start when you sign in.", "system-run"),
-        kde("session", "Sign-in and Sign-out", "Desktop Session", "kcm_smserver", SettingsSection::StartupShutdown,
+        nativeEditor("session", "Sign-in and Sign-out", "Desktop Session", "kcm_smserver", SettingsSection::StartupShutdown,
             "Choose session restore, login and logout behavior.", "system-log-out"),
-        kde("screen-lock", "Lock Screen", "Screen Locking", "kcm_screenlocker", SettingsSection::StartupShutdown,
+        nativeEditor("screen-lock", "Lock Screen", "Screen Locking", "kcm_screenlocker", SettingsSection::StartupShutdown,
             "Configure automatic screen locking and lock appearance.", "system-lock-screen"),
-        kde("background-services", "Background Services", "Background Services", "kcm_kded", SettingsSection::StartupShutdown,
+        nativeEditor("background-services", "Background Services", "Background Services", "kcm_kded", SettingsSection::StartupShutdown,
             "Choose desktop services that run in the background.", "preferences-system-services"),
 
         // Security and maintenance
-        page("firewall", "Firewall", "Firewall", PageId::Firewall,
+        page("firewall", "Windows Firewall", "Firewall", PageId::Firewall,
              SettingsSection::SecurityMaintenance, "View firewall status and network protection.", "preferences-security-firewall",
              ReplacementStatus::Partial),
-        page("updates", "Linux Update", "Software Update", PageId::LinuxUpdate,
+        page("updates", "Windows Update", "Software Update", PageId::LinuxUpdate,
              SettingsSection::SecurityMaintenance, "Check for and install system updates.", "system-software-update"),
-        kde("feedback", "Diagnostic Data", "User Feedback", "kcm_feedback", SettingsSection::SecurityMaintenance,
+        nativeEditor("feedback", "Diagnostic Data", "User Feedback", "kcm_feedback", SettingsSection::SecurityMaintenance,
             "Choose whether anonymous desktop feedback is sent.", "preferences-desktop-user-feedback"),
 
         // Storage and system
-        kde("automount", "Automatic Media Mounting", "Device Automounter", "kcm_device_automounter", SettingsSection::StorageAdministration,
+        nativeEditor("automount", "Automatic Media Mounting", "Device Automounter", "kcm_device_automounter", SettingsSection::StorageAdministration,
             "Choose which disks and volumes mount automatically.", "drive-removable-media"),
         page("system-overview", "System Information", "Quick Settings",
              PageId::System, SettingsSection::System,
              "View the operating system, processor, memory and computer name.",
              "computer", ReplacementStatus::Native, "kcm_landingpage"),
-        kde("renderer", "Desktop Renderer", "Plasma Renderer", "kcm_qtquicksettings", SettingsSection::System,
+        nativeEditor("renderer", "Desktop Renderer", "Plasma Renderer", "kcm_qtquicksettings", SettingsSection::System,
             "Choose the graphics renderer used by the desktop shell.", "video-display"),
     };
     return entries;
@@ -443,16 +490,16 @@ LinkTarget targetForLegacyLabel(const QString &text)
     if (it != pages.constEnd())
         return toPage(it.value());
 
-    static const QHash<QString, QStringList> commands = {
-        {"Change adapter settings", {"kcmshell6", "kcm_networkmanagement"}},
-        {"Adjust visual effects", kcm("kcm_kwin_effects")},
-        {"Adjust indexing options", kcm("kcm_baloofile")},
-        {"Adjust power settings", kcm("kcm_powerdevilprofilesconfig")},
-        {"Change account picture", kcm("kcm_users")},
+    static const QHash<QString, PageId> nativePages = {
+        {"Change adapter settings", PageId::NetworkSettings},
+        {"Adjust visual effects", PageId::WindowBehavior},
+        {"Adjust indexing options", PageId::FolderOptions},
+        {"Adjust power settings", PageId::PowerOptions},
+        {"Change account picture", PageId::UserAccounts},
     };
-    const auto cmdIt = commands.constFind(text);
-    if (cmdIt != commands.constEnd())
-        return toCommand(cmdIt.value());
+    const auto nativeIt = nativePages.constFind(text);
+    if (nativeIt != nativePages.constEnd())
+        return toPage(nativeIt.value());
 
     if (text == "Date and Time")
         return toApplet("datetime");
@@ -466,8 +513,10 @@ LinkTarget targetForSetting(const SettingDefinition &setting)
     switch (setting.backend) {
     case SettingsBackend::Aero7Page:       return toPage(setting.page);
     case SettingsBackend::Aero7Applet:     return toApplet(setting.applet);
-    case SettingsBackend::KdeModule:
-    case SettingsBackend::ExternalCommand: return toCommand(setting.command);
+    case SettingsBackend::Aero7NativeEditor:
+        return toPage(pageForSection(setting.section));
+    case SettingsBackend::ExternalCommand:
+        return toCommand(setting.command);
     }
     return {};
 }
@@ -477,7 +526,7 @@ QString backendLabel(const SettingDefinition &setting)
     switch (setting.backend) {
     case SettingsBackend::Aero7Page:       return "Aero7 Control Panel page";
     case SettingsBackend::Aero7Applet:     return "Aero7 Control Panel dialog";
-    case SettingsBackend::KdeModule:       return setting.kdeModule;
+    case SettingsBackend::Aero7NativeEditor: return "Aero7 native editor";
     case SettingsBackend::ExternalCommand: return setting.command.join(' ');
     }
     return {};

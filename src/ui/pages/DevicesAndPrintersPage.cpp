@@ -1,5 +1,7 @@
 #include "DevicesAndPrintersPage.h"
 #include "DevicePropertiesDialog.h"
+#include "BluetoothDialog.h"
+#include "AddPrinterDialog.h"
 #include "IconHelper.h"
 #include "LinkLabel.h"
 #include "Win7Ui.h"
@@ -17,8 +19,6 @@
 #include <QSysInfo>
 #include <QProcess>
 #include <QStandardPaths>
-#include <QDesktopServices>
-#include <QUrl>
 
 namespace {
 
@@ -345,25 +345,13 @@ void DevicesAndPrintersPage::updateDetails(const ShellDevice *dev) {
 }
 
 void DevicesAndPrintersPage::launchAddPrinter() {
-    // Prefer the desktop printer tool; fall back to CUPS' own web admin.
-    for (const char *tool : { "system-config-printer", "hp-setup" }) {
-        if (!QStandardPaths::findExecutable(tool).isEmpty()) {
-            QProcess::startDetached(tool, {});
-            return;
-        }
-    }
-    QDesktopServices::openUrl(QUrl("http://localhost:631/admin"));
+    AddPrinterDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted)
+        Win7::runAsync(this, &DevicesAndPrintersPage::runScan,
+                       [this](const ScanResult &result) { populate(result); });
 }
 
 void DevicesAndPrintersPage::launchAddDevice() {
-    // The closest analogue to Windows' "Add a device" wizard is the desktop's
-    // Bluetooth pairing assistant; fall back to a general Bluetooth manager.
-    for (const char *tool : { "bluedevil-wizard", "blueman-manager",
-                              "bluetooth-sendto" }) {
-        if (!QStandardPaths::findExecutable(tool).isEmpty()) {
-            QProcess::startDetached(tool, {});
-            return;
-        }
-    }
-    launchDetached(this, { "bluedevil-wizard" });  // reports "not installed"
+    BluetoothDialog dialog(this);
+    dialog.exec();
 }

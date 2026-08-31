@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Aero7 Action Center
+Comment=Monitor security and maintenance status
+Exec=aero7-action-center
+Icon=flag
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

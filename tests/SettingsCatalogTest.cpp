@@ -13,7 +13,7 @@ int main()
     const QSet<QString> nativeReplacementKeys = {
         QStringLiteral("personalization"), QStringLiteral("sound"),
         QStringLiteral("network-status"), QStringLiteral("power"),
-        QStringLiteral("accounts"),
+        QStringLiteral("accounts"), QStringLiteral("display"),
     };
     QSet<QString> nativeReplacementsFound;
     bool foundNetworkManagement = false;
@@ -34,14 +34,13 @@ int main()
         if (target.kind == LinkTarget::None || target.kind == LinkTarget::Disabled)
             return 4;
 
-        if (setting.backend == SettingsBackend::KdeModule) {
-            // Plasma 6 has both kcm_* ids and ids such as
-            // kcmspellchecking, so require the stable kcm prefix rather than
-            // the old underscore convention.
+        if (setting.backend == SettingsBackend::Aero7NativeEditor) {
+            // Keep the original module ID as audit metadata, but never attach
+            // a command capable of opening its user interface.
             if (!setting.kdeModule.startsWith(QStringLiteral("kcm"))
-                || setting.command.size() != 2
-                || setting.command.at(0) != QStringLiteral("kcmshell6")
-                || setting.command.at(1) != setting.kdeModule)
+                || !setting.command.isEmpty()
+                || setting.status != ReplacementStatus::Native
+                || target.kind != LinkTarget::Page)
                 return 5;
         }
         if (setting.kdeModule == QStringLiteral("kcm_networkmanagement"))

@@ -39,13 +39,13 @@ LinverConfigDialog::LinverConfigDialog(const QString &distroName, QWidget *paren
 
     // ---- Toggles ----------------------------------------------------------
     // Choosing the Windows 7 style already swaps in the fake edition/logo, so no
-    // separate "fake version" toggle is needed. This switch renames every
-    // "Linux X" feature mention to "Windows X" and is independent of the style.
-    m_windowsNames = new QCheckBox(
-        QStringLiteral("Use Windows names for system features "
-                       "(Update, Firewall, and so on)"));
-    m_windowsNames->setChecked(Branding::useWindowsNames());
-    root->addWidget(m_windowsNames);
+    // separate "fake version" toggle is needed. Windows 7 Control Panel names
+    // are the Aero7 default; this opt-in exposes the matching KDE/Plasma names
+    // for users following upstream documentation.
+    m_kdeNames = new QCheckBox(
+        QStringLiteral("Use KDE Plasma names for Control Panel settings"));
+    m_kdeNames->setChecked(!Branding::useWindowsNames());
+    root->addWidget(m_kdeNames);
 
     // ---- Customize hint + (stub) button ----------------------------------
     auto *custRow = new QHBoxLayout;
@@ -79,5 +79,5 @@ void LinverConfigDialog::applyToSettings()
     Branding::setStyle(m_styleCombo->currentIndex() == 1
                            ? Branding::Style::Windows7
                            : Branding::Style::Distro);
-    Branding::setUseWindowsNames(m_windowsNames->isChecked());
+    Branding::setUseWindowsNames(!m_kdeNames->isChecked());
 }

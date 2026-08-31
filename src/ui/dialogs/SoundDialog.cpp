@@ -27,7 +27,6 @@
 #include <QDir>
 #include <QLineEdit>
 #include <QMessageBox>
-#include <QFileDialog>
 #include <QInputDialog>
 #include <QSettings>
 #include <QMouseEvent>

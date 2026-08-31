@@ -1,7 +1,8 @@
 #include "EaseOfAccessPage.h"
-#include "Commands.h"
 #include "LinkLabel.h"
 #include "IconHelper.h"
+#include "NativeSettingsDialog.h"
+#include "SettingsCatalog.h"
 #include "Win7Ui.h"
 
 #include <QScrollArea>
@@ -11,14 +12,6 @@
 #include <QGridLayout>
 #include <QFrame>
 #include <QFont>
-
-// The KDE modules the tools and settings hand off to.
-static const QStringList kAccess      = { "kcmshell6", "kcm_access" };
-static const QStringList kMagnifier   = { "kcmshell6", "kcm_kwin_effects" };
-static const QStringList kVirtualKeyboard = { "kcmshell6", "kcm_virtualkeyboard" };
-static const QStringList kHighContrast = { "kcmshell6", "kcm_colors" };
-static const QStringList kMouse       = { "kcmshell6", "kcm_mouse" };
-static const QStringList kCursorTheme = { "kcmshell6", "kcm_cursortheme" };
 
 // Sidebar
 QList<SidebarLink> EaseOfAccessPage::sidebarLinks()
@@ -30,12 +23,12 @@ QList<SidebarLink> EaseOfAccessPage::sidebarSeeAlso()
 {
     return {
         Nav::to("Personalization", PageId::Personalization),
-        Nav::command("Display", kcm("kcm_kscreen")),
+        Nav::to("Display", PageId::DisplaySettings),
     };
 }
 
 void EaseOfAccessPage::addSettingLink(QVBoxLayout *into, const QString &iconName,
-                                      const QString &text, const QStringList &cmd)
+                                      const QString &text, const QString &key)
 {
     auto *row = new QHBoxLayout;
     row->setContentsMargins(0, 0, 0, 0);
@@ -49,14 +42,21 @@ void EaseOfAccessPage::addSettingLink(QVBoxLayout *into, const QString &iconName
     row->addWidget(icon, 0, Qt::AlignVCenter);
 
     auto *link = new LinkLabel(text);
-    QObject::connect(link, &LinkLabel::clicked, this, [this, cmd]() {
-        launchDetached(this, cmd);
-    });
+    QObject::connect(link, &LinkLabel::clicked, this,
+                     [this, key]() { openSetting(key); });
     row->addWidget(link, 0, Qt::AlignVCenter);
     row->addStretch(1);
 
     into->addLayout(row);
     into->addSpacing(10);
+}
+
+void EaseOfAccessPage::openSetting(const QString &key)
+{
+    if (const SettingDefinition *setting = SettingsCatalog::findByKey(key)) {
+        NativeSettingsDialog dialog(*setting, this);
+        dialog.exec();
+    }
 }
 
 // Page
@@ -95,7 +95,7 @@ EaseOfAccessPage::EaseOfAccessPage(QScrollArea *sidebar, QWidget *parent)
     grid->setVerticalSpacing(14);
 
     auto makeTile = [&](const QString &iconName, const QString &text,
-                        const QStringList &cmd) {
+                        const QString &key) {
         auto *tile = new QHBoxLayout;
         tile->setContentsMargins(0, 0, 0, 0);
         tile->setSpacing(10);
@@ -108,20 +108,19 @@ EaseOfAccessPage::EaseOfAccessPage(QScrollArea *sidebar, QWidget *parent)
         tile->addWidget(icon, 0, Qt::AlignVCenter);
 
         auto *link = new LinkLabel(text);
-        QObject::connect(link, &LinkLabel::clicked, this, [this, cmd]() {
-            launchDetached(this, cmd);
-        });
+        QObject::connect(link, &LinkLabel::clicked, this,
+                         [this, key]() { openSetting(key); });
         tile->addWidget(link, 0, Qt::AlignVCenter);
         tile->addStretch(1);
         return tile;
     };
 
-    grid->addLayout(makeTile("zoom-in", "Configure Magnifier", kMagnifier), 0, 0);
+    grid->addLayout(makeTile("zoom-in", "Configure Magnifier", "accessibility-details"), 0, 0);
     grid->addLayout(makeTile("preferences-desktop-keyboard",
-                             "Configure On-Screen Keyboard", kVirtualKeyboard), 0, 1);
-    grid->addLayout(makeTile("audio-volume-high", "Configure Screen Reader", kAccess), 1, 0);
+                             "Configure On-Screen Keyboard", "virtual-keyboard"), 0, 1);
+    grid->addLayout(makeTile("audio-volume-high", "Configure Screen Reader", "accessibility-details"), 1, 0);
     grid->addLayout(makeTile("preferences-desktop-theme",
-                             "Set up High Contrast", kHighContrast), 1, 1);
+                             "Set up High Contrast", "accessibility-details"), 1, 1);
     grid->setColumnStretch(0, 1);
     grid->setColumnStretch(1, 1);
 
@@ -143,19 +142,19 @@ EaseOfAccessPage::EaseOfAccessPage(QScrollArea *sidebar, QWidget *parent)
     list->setSpacing(0);
 
     addSettingLink(list, "preferences-desktop-accessibility",
-                   "Use the computer without a display", kAccess);
+                   "Use the computer without a display", "accessibility-details");
     addSettingLink(list, "zoom-in",
-                   "Make the computer easier to see", kMagnifier);
+                   "Make the computer easier to see", "accessibility-details");
     addSettingLink(list, "input-mouse",
-                   "Use the computer without a mouse or keyboard", kAccess);
+                   "Use the computer without a mouse or keyboard", "accessibility-details");
     addSettingLink(list, "input-mouse",
-                   "Make the mouse easier to use", kMouse);
+                   "Make the mouse easier to use", "mouse");
     addSettingLink(list, "input-keyboard",
-                   "Make the keyboard easier to use", kAccess);
+                   "Make the keyboard easier to use", "accessibility-details");
     addSettingLink(list, "audio-volume-high",
-                   "Use text or visual alternatives for sounds", kAccess);
+                   "Use text or visual alternatives for sounds", "accessibility-details");
     addSettingLink(list, "preferences-desktop-cursors",
-                   "Change the size of mouse pointers", kCursorTheme);
+                   "Change the size of mouse pointers", "mouse");
 
     contentV->addLayout(list);
     contentV->addStretch(1);

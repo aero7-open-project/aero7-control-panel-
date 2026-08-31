@@ -5,7 +5,8 @@
 // Two orthogonal, persisted concerns (stored under the app's default QSettings
 // in the [Branding] group; org/app are set to "controlpanel" in main.cpp):
 //
-//  1. os()/brand(), word substitution. When "Use Windows names" is on, every
+//  1. os()/brand(), word substitution. Windows 7 names are the fresh-install
+//     default. When "Use KDE Plasma names" is enabled, every
 //     user-facing "Linux X" mention is displayed as "Windows X". The rest of
 //     the app keeps its canonical "Linux ..." strings (routing keys, data
 //     tables); only what is *shown* is rewritten, at widget-build time. Because
@@ -17,7 +18,9 @@
 //     the Windows 7 style automatically shows the fake edition; there is no
 //     separate "fake version" toggle.
 //
-// Defaults reproduce today's behaviour exactly: real distro, "Linux" wording.
+// Defaults reproduce Windows 7's public Control Panel wording while retaining
+// the real Aero7/Linux backends. The optional KDE naming mode is useful for
+// following upstream Plasma documentation and bug reports.
 
 #include <QString>
 #include <QIcon>

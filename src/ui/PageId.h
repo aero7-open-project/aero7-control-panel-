@@ -77,7 +77,7 @@ struct SidebarLink {
 //   return {
 //       Nav::plain("Turn Linux Firewall on or off"),
 //       Nav::to("Network and Sharing Center", PageId::NetworkSharing),
-//       Nav::command("Change adapter settings", kcm("kcm_networkmanagement")),
+//       Nav::to("Change adapter settings", PageId::NetworkSettings),
 //   };
 namespace Nav {
 

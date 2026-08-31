@@ -178,12 +178,9 @@ QList<SidebarLink> PowerOptionsPage::sidebarLinks()
     // "Control Panel Home" is prepended by the sidebar shell itself, so it must
     // not be repeated here.
     return {
-        Nav::command("Require a password when the computer wakes",
-                     {"kcmshell6", "kcm_powerdevilprofilesconfig"}),
-        Nav::command("Choose what the power buttons do",
-                     {"kcmshell6", "kcm_powerdevilprofilesconfig"}),
-        Nav::command("Advanced sleep and display settings",
-                     {"kcmshell6", "kcm_powerdevilprofilesconfig"}),
+        Nav::to("Require a password when the computer wakes", PageId::StartupShutdown),
+        Nav::to("Choose what the power buttons do", PageId::PowerOptions),
+        Nav::to("Advanced sleep and display settings", PageId::PowerOptions),
     };
 }
 
@@ -229,9 +226,7 @@ PowerOptionsPage::PowerOptionsPage(QScrollArea *sidebar, QWidget *parent)
     intro->setWordWrap(true);
     intro->setOpenExternalLinks(false);
     intro->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    connect(intro, &QLabel::linkActivated, this, [this]() {
-        launchDetached(this, {"kcmshell6", "kcm_powerdevilprofilesconfig"});
-    });
+    connect(intro, &QLabel::linkActivated, this, []() {});
     {
         QPalette pal = intro->palette();
         pal.setColor(QPalette::Link, QColor("#1F4E99"));
@@ -469,9 +464,7 @@ QWidget *PowerOptionsPage::buildPlanRow(const Plan &plan)
     nameLine->addStretch(1);
 
     auto *change = new LinkLabel("Change plan settings");
-    connect(change, &LinkLabel::clicked, this, [this]() {
-        launchDetached(this, {"kcmshell6", "kcm_powerdevilprofilesconfig"});
-    });
+    connect(change, &LinkLabel::clicked, this, [radio]() { radio->setChecked(true); });
     nameLine->addWidget(change, 0, Qt::AlignVCenter);
 
     textV->addLayout(nameLine);

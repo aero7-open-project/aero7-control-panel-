@@ -17,7 +17,7 @@ class QVBoxLayout;
 // Linux facility are filled from live state read the same cheap, root-free way
 // the other pages use (ufw config for the firewall, an antivirus binary probe,
 // the polkit authority for UAC); the remaining rows mirror Windows' wording with
-// plausible fixed values, as there is no Linux equivalent to query.
+// truthful live values. Unsupported Windows-only rows are omitted.
 class ActionCenterPage : public QWidget {
     Q_OBJECT
 
@@ -38,6 +38,11 @@ private:
         bool    avPresent  = false;   // an on-demand scanner (ClamAV) is installed
         QString avName;               // display name of that scanner
         bool    uacOn      = false;   // a polkit authority is on the bus
+        bool    networkUp  = false;
+        bool    backupConfigured = false;
+        int     failedServices = 0;
+        int     updatesAvailable = -1; // -1 means no supported package query
+        bool    diskLow = false;
     };
 
     static AcInfo gatherInfo();

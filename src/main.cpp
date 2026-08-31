@@ -3,6 +3,7 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QEvent>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -134,6 +135,11 @@ int main(int argc, char *argv[]) {
     app.setOrganizationName("controlpanel");
     app.setApplicationName("controlpanel");
     // No setApplicationDisplayName: Qt appends it to every window/dialog title.
+    // Qt's generic platform plugin does not always import KDE's icon-theme
+    // setting.  Aero7 installs its own redistributable theme, so select it
+    // explicitly when present; its index inherits Breeze and hicolor.
+    if (QFileInfo::exists(QStringLiteral("/usr/share/icons/Windows 7 Aero/index.theme")))
+        QIcon::setThemeName(QStringLiteral("Windows 7 Aero"));
     app.setWindowIcon(themeIcon({"preferences-system"}));
 
     QCommandLineParser parser;
@@ -150,6 +156,11 @@ int main(int argc, char *argv[]) {
         QStringLiteral("Open a setting by its stable Aero7 catalog key."),
         QStringLiteral("key"));
     parser.addOption(settingOption);
+    QCommandLineOption tabOption(
+        QStringLiteral("tab"),
+        QStringLiteral("Select a tab on a directly opened properties page."),
+        QStringLiteral("tab"));
+    parser.addOption(tabOption);
     QCommandLineOption listSettingsOption(
         QStringLiteral("list-settings-json"),
         QStringLiteral("Print the searchable settings catalog as JSON and exit."));
@@ -187,6 +198,23 @@ int main(int argc, char *argv[]) {
     if (requestedPage.compare(QStringLiteral("getting-started"),
                               Qt::CaseInsensitive) == 0) {
         w.openPage(PageId::GettingStarted);
+    } else if (requestedPage.compare(QStringLiteral("devices-and-printers"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::DevicesPrinters);
+    } else if (requestedPage.compare(QStringLiteral("taskbar-start-menu"),
+                                     Qt::CaseInsensitive) == 0) {
+        qputenv("AERO7_TASKBAR_PROPERTIES_TAB",
+                parser.value(tabOption).toUtf8());
+        w.openPage(PageId::TaskbarStartMenu);
+    } else if (requestedPage.compare(QStringLiteral("action-center"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::ActionCenter);
+    } else if (requestedPage.compare(QStringLiteral("security-maintenance"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::SecurityMaintenance);
+    } else if (requestedPage.compare(QStringLiteral("storage-administration"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::StorageAdministration);
     }
     w.show();
     if (setting) {

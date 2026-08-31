@@ -29,9 +29,8 @@ together in a familiar Control Panel-style interface for the Aero7 desktop.
 **Aero7 Control Panel is an independent project and is not affiliated with or endorsed by Microsoft Corporation. Windows is a trademark of the Microsoft group of companies.**
 
 > [!WARNING]
-> Aero7 Control Panel is under active development. Some settings use an
-> individual KDE Control Module as a documented compatibility backend while a
-> native Aero7 implementation is developed.
+> Aero7 Control Panel is under active development. Unsupported Windows-only
+> services are identified honestly and are not represented by fake switches.
 
 [![Aero7 Control Panel home](docs/screenshots/control-panel-home.png)](https://github.com/memegeko/aero7-control-panel-/wiki/Screenshots)
 
@@ -58,6 +57,8 @@ Current functionality includes:
 
 - Aero7 Getting Started page with internal links to working settings pages
 - Catalog-driven settings hubs that preserve every original KDE setting name
+- Exact 45-item Windows 7 **All Control Panel Items** inventory and five-column order
+- Windows 7 names by default, with a persistent KDE Plasma naming option
 - Search and large/small-icon views backed by the same settings catalog
 - Windows 7-style Control Panel home screen organized by category
 - Windows Update-style page backed by real `pacman` update checks
@@ -70,6 +71,8 @@ Current functionality includes:
 - PipeWire/PulseAudio device, volume, mute and sound-theme controls
 - Power profiles plus live UPower battery status
 - Windows Experience Index-style performance benchmark
+- Direct launchers for Aero7 Device Manager, Computer Management and the native
+  Aero7 gadget gallery
 
 Aero7-specific pages and integrations will be added as development continues.
 
@@ -86,15 +89,18 @@ actions open the
 ### KDE settings map
 
 The [complete settings reference](docs/CONTROL-PANEL-SETTINGS-REFERENCE.md)
-explains what every searchable setting does, its original KDE name, the Linux
+explains what every searchable setting does, its KDE Plasma name, the Linux
 or KDE backend it uses, and its implementation status. The lower-level
 [settings map](docs/KDE-SETTINGS-MAP.md) records each Aero7
-label, its original KDE name, its KCM or native backend, and its replacement
-state. Original KDE names remain traceable even when the public Aero7 wording
-is improved later. Missing optional KCMs produce a visible explanation instead
-of a dead button. The companion [function audit](docs/CONTROL-PANEL-FUNCTIONS.md)
+label, its KDE Plasma name, its historical KCM or native backend, and its replacement
+state. KDE Plasma names remain traceable while Windows 7 wording is the
+default. Missing services produce a visible explanation instead of a dead
+button. The companion [function audit](docs/CONTROL-PANEL-FUNCTIONS.md)
 records what every main page action currently does and which controls are
 intentionally unavailable.
+The [Windows 7 parity audit](docs/WINDOWS-7-CONTROL-PANEL-PARITY.md) records all
+45 applets, their real Aero7 destination, current limitation status and the
+placement of KDE/Wayland-only settings.
 
 The separate [Aero7 Control Panel Wiki](https://github.com/memegeko/aero7-control-panel-/wiki)
 contains the user handbook, settings reference, backend map, permissions, and
@@ -127,13 +133,13 @@ Aero7 desktop.
 | `pactl` / `paplay` | PipeWire/PulseAudio device and sound control |
 | `accountsservice` / `shadow` | Local account discovery and management |
 | `upower` / `power-profiles-daemon` | Battery state and power profiles |
-| `kcmshell6` | Opens an individual KDE setting used as a compatibility backend |
+| Plasma/KWin configuration services | Apply desktop-owned settings without opening the KDE System Settings shell |
 
 ## Roadmap
 
 Planned Aero7 expansion areas include:
 
-- Replace KDE compatibility bridges with direct Linux/KDE service APIs where practical
+- Expand native Linux/KDE service integration where practical
 - Hardware, storage, and advanced security pages
 - Update, repair, recovery, and Aero7 repository management
 - More native Aero7 controls for advanced settings

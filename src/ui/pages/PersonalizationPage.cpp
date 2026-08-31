@@ -22,15 +22,261 @@
 #include <QSet>
 #include <QMouseEvent>
 #include <QEvent>
-#include <QFileDialog>
+#include "Aero7FileDialog.h"
 #include <QMessageBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QCheckBox>
 #include <QSpinBox>
 #include <QFormLayout>
+#include <QComboBox>
+#include <QPushButton>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QDirIterator>
+#include <QImageReader>
+#include <QFile>
 #include <algorithm>
 #include <functional>
+
+namespace {
+
+QString personalizationConfigPath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+        + QStringLiteral("/aero7-personalization.conf");
+}
+
+bool isSupportedImage(const QString &path)
+{
+    const QByteArray suffix = QFileInfo(path).suffix().toLower().toLatin1();
+    return QImageReader::supportedImageFormats().contains(suffix);
+}
+
+QStringList findWallpapers()
+{
+    QStringList roots = {
+        QStringLiteral("/usr/share/wallpapers"),
+        QStringLiteral("/usr/share/backgrounds"),
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+            + QStringLiteral("/wallpapers"),
+        QStandardPaths::writableLocation(QStandardPaths::PicturesLocation),
+    };
+
+    QSettings settings(personalizationConfigPath(), QSettings::IniFormat);
+    const QString configured =
+        settings.value(QStringLiteral("DesktopBackground/Image")).toString();
+
+    QStringList images;
+    if (QFileInfo::exists(configured) && isSupportedImage(configured))
+        images << QFileInfo(configured).canonicalFilePath();
+
+    QSet<QString> seen(images.cbegin(), images.cend());
+    for (const QString &root : std::as_const(roots)) {
+        if (!QFileInfo::exists(root))
+            continue;
+        QDirIterator it(root, QDir::Files | QDir::Readable,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString path = it.next();
+            if (!isSupportedImage(path))
+                continue;
+            const QString canonical = QFileInfo(path).canonicalFilePath();
+            if (canonical.isEmpty() || seen.contains(canonical))
+                continue;
+            seen.insert(canonical);
+            images << canonical;
+            if (images.size() >= 80)
+                return images;
+        }
+    }
+    return images;
+}
+
+class DesktopBackgroundDialog final : public QDialog {
+public:
+    explicit DesktopBackgroundDialog(QWidget *parent = nullptr)
+        : QDialog(parent)
+    {
+        setWindowTitle(QStringLiteral("Desktop Background"));
+        resize(830, 600);
+        setMinimumSize(680, 500);
+
+        auto *outer = new QVBoxLayout(this);
+        outer->setContentsMargins(18, 14, 18, 14);
+        outer->setSpacing(10);
+
+        auto *title = Win7::pageTitle(
+            QStringLiteral("Choose your desktop background"));
+        outer->addWidget(title);
+
+        auto *locationRow = new QHBoxLayout;
+        locationRow->addWidget(new QLabel(QStringLiteral("Picture location:")));
+        m_location = new QComboBox;
+        m_location->addItem(QStringLiteral("Aero7 Desktop Backgrounds"));
+        m_location->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        locationRow->addWidget(m_location, 1);
+        auto *browse = new QPushButton(QStringLiteral("Browse..."));
+        connect(browse, &QPushButton::clicked, this,
+                [this]() { browseForImage(); });
+        locationRow->addWidget(browse);
+        outer->addLayout(locationRow);
+
+        m_wallpapers = new QListWidget;
+        m_wallpapers->setObjectName(QStringLiteral("wallpaperGallery"));
+        m_wallpapers->setViewMode(QListView::IconMode);
+        m_wallpapers->setMovement(QListView::Static);
+        m_wallpapers->setResizeMode(QListView::Adjust);
+        m_wallpapers->setSelectionMode(QAbstractItemView::SingleSelection);
+        m_wallpapers->setIconSize(QSize(144, 86));
+        m_wallpapers->setGridSize(QSize(164, 122));
+        m_wallpapers->setSpacing(4);
+        m_wallpapers->setWordWrap(true);
+        m_wallpapers->setStyleSheet(
+            "QListWidget#wallpaperGallery { background: white; border: 1px solid #8E9EAE; }"
+            "QListWidget#wallpaperGallery::item { padding: 5px; border: 1px solid transparent; }"
+            "QListWidget#wallpaperGallery::item:selected { background: #D9ECFF; border: 1px solid #7DA2CE; color: black; }");
+        outer->addWidget(m_wallpapers, 1);
+
+        auto *bottom = new QHBoxLayout;
+        bottom->addWidget(new QLabel(QStringLiteral("Picture position:")));
+        m_position = new QComboBox;
+        m_position->addItem(QStringLiteral("Fill"),
+                            QStringLiteral("preserveAspectCrop"));
+        m_position->addItem(QStringLiteral("Fit"),
+                            QStringLiteral("preserveAspectFit"));
+        m_position->addItem(QStringLiteral("Stretch"),
+                            QStringLiteral("stretch"));
+        m_position->addItem(QStringLiteral("Tile"), QStringLiteral("tile"));
+        m_position->addItem(QStringLiteral("Center"),
+                            QStringLiteral("preserveAspectFit"));
+        bottom->addWidget(m_position);
+        bottom->addStretch(1);
+        outer->addLayout(bottom);
+
+        auto *buttons = new QDialogButtonBox;
+        auto *save = buttons->addButton(QStringLiteral("Save changes"),
+                                        QDialogButtonBox::AcceptRole);
+        buttons->addButton(QDialogButtonBox::Cancel);
+        connect(save, &QPushButton::clicked, this, [this]() { apply(); });
+        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        outer->addWidget(buttons);
+
+        load();
+    }
+
+private:
+    void addImage(const QString &path, bool select)
+    {
+        if (!QFileInfo::exists(path) || !isSupportedImage(path))
+            return;
+        for (int i = 0; i < m_wallpapers->count(); ++i) {
+            auto *existing = m_wallpapers->item(i);
+            if (existing->data(Qt::UserRole).toString() == path) {
+                if (select)
+                    m_wallpapers->setCurrentItem(existing);
+                return;
+            }
+        }
+
+        QPixmap preview(path);
+        if (preview.isNull())
+            return;
+        preview = preview.scaled(QSize(144, 86), Qt::KeepAspectRatioByExpanding,
+                                 Qt::SmoothTransformation);
+        if (preview.width() > 144 || preview.height() > 86) {
+            preview = preview.copy((preview.width() - 144) / 2,
+                                   (preview.height() - 86) / 2, 144, 86);
+        }
+        auto *item = new QListWidgetItem(QIcon(preview),
+                                         QFileInfo(path).completeBaseName());
+        item->setData(Qt::UserRole, path);
+        item->setToolTip(path);
+        m_wallpapers->addItem(item);
+        if (select)
+            m_wallpapers->setCurrentItem(item);
+    }
+
+    void load()
+    {
+        QSettings settings(personalizationConfigPath(), QSettings::IniFormat);
+        const QString current =
+            settings.value(QStringLiteral("DesktopBackground/Image")).toString();
+        const QString mode = settings.value(
+            QStringLiteral("DesktopBackground/FillMode"),
+            QStringLiteral("preserveAspectCrop")).toString();
+        const int position = m_position->findData(mode);
+        if (position >= 0)
+            m_position->setCurrentIndex(position);
+
+        for (const QString &path : findWallpapers())
+            addImage(path, path == current);
+        if (!m_wallpapers->currentItem() && m_wallpapers->count() > 0)
+            m_wallpapers->setCurrentRow(0);
+    }
+
+    void browseForImage()
+    {
+        const QString path = Aero7FileDialog::openFile(
+            this, QStringLiteral("control-personalization"),
+            QStringLiteral("Images (*.png *.jpg *.jpeg *.webp *.bmp);;All files (*)"));
+        if (!path.isEmpty())
+            addImage(QFileInfo(path).canonicalFilePath(), true);
+    }
+
+    void apply()
+    {
+        auto *item = m_wallpapers->currentItem();
+        if (!item) {
+            QMessageBox::warning(this, QStringLiteral("Desktop Background"),
+                                 QStringLiteral("Select a picture first."));
+            return;
+        }
+        const QString image = item->data(Qt::UserRole).toString();
+        const QString mode = m_position->currentData().toString();
+        const QString tool = QStandardPaths::findExecutable(
+            QStringLiteral("plasma-apply-wallpaperimage"));
+        if (tool.isEmpty()) {
+            QMessageBox::warning(this, QStringLiteral("Desktop Background"),
+                                 QStringLiteral("The wallpaper backend is not installed."));
+            return;
+        }
+
+        QProcess process;
+        process.start(tool, {QStringLiteral("--fill-mode"), mode, image});
+        if (!process.waitForStarted(2000) || !process.waitForFinished(10000)
+            || process.exitCode() != 0) {
+            const QString detail =
+                QString::fromUtf8(process.readAllStandardError()).trimmed();
+            QMessageBox::warning(
+                this, QStringLiteral("Desktop Background"),
+                detail.isEmpty()
+                    ? QStringLiteral("The background could not be changed.")
+                    : detail);
+            return;
+        }
+
+        QSettings settings(personalizationConfigPath(), QSettings::IniFormat);
+        settings.setValue(QStringLiteral("DesktopBackground/Image"), image);
+        settings.setValue(QStringLiteral("DesktopBackground/FillMode"), mode);
+        settings.sync();
+        accept();
+    }
+
+    QComboBox *m_location = nullptr;
+    QListWidget *m_wallpapers = nullptr;
+    QComboBox *m_position = nullptr;
+};
+
+bool isAero7Scheme(const QString &id, const QString &name)
+{
+    const QString value = (id + QLatin1Char(' ') + name).toLower();
+    return value.contains(QStringLiteral("aero"))
+        || value.contains(QStringLiteral("windows 7"))
+        || value.contains(QStringLiteral("seven"));
+}
+
+} // namespace
 
 // Data gathering
 // Parse a "r,g,b" (optionally with a trailing alpha) triple into a QColor.
@@ -72,6 +318,9 @@ QList<PersonalizationPage::Scheme> PersonalizationPage::gatherSchemes()
             Scheme s;
             s.id = id;
             s.name = ini.value(QStringLiteral("General/Name"), id).toString();
+
+            if (!isAero7Scheme(s.id, s.name))
+                continue;
 
             s.window = parseRgb(
                 ini.value(QStringLiteral("Colors:Window/BackgroundNormal"))
@@ -170,8 +419,6 @@ QPixmap PersonalizationPage::swatchPixmap(const Scheme &s) const
 QList<SidebarLink> PersonalizationPage::sidebarLinks()
 {
     return {
-        Nav::command("Change desktop icons", kcm("kcm_icons")),
-        Nav::command("Change mouse pointers", kcm("kcm_cursortheme")),
         Nav::to("Change your account picture", PageId::UserAccounts),
     };
 }
@@ -179,8 +426,8 @@ QList<SidebarLink> PersonalizationPage::sidebarLinks()
 QList<SidebarLink> PersonalizationPage::sidebarSeeAlso()
 {
     return {
-        Nav::command("Display", kcm("kcm_kscreen")),
-        Nav::plain("Taskbar and Start Menu"),
+        Nav::to("Display", PageId::DisplaySettings),
+        Nav::to("Taskbar and Start Menu", PageId::TaskbarStartMenu),
         Nav::to("Ease of Access Center", PageId::EaseOfAccess),
     };
 }
@@ -217,7 +464,7 @@ PersonalizationPage::PersonalizationPage(QScrollArea *sidebar, QWidget *parent)
         contentV->addSpacing(10);
     };
 
-    addHeading(QStringLiteral("Aero Color Schemes (%1)").arg(m_schemes.size()));
+    addHeading(QStringLiteral("Aero Themes (%1)").arg(m_schemes.size()));
 
     // Swatch grid: four themes per row.
     auto *grid = new QGridLayout;
@@ -292,13 +539,7 @@ PersonalizationPage::PersonalizationPage(QScrollArea *sidebar, QWidget *parent)
     addAction("preferences-desktop-wallpaper", "Desktop\nBackground",
               [this]() { chooseWallpaper(); });
     addAction("preferences-desktop-color", "Window\nColor",
-              [this]() {
-                  QMessageBox::information(
-                      this, QStringLiteral("Window Color"),
-                      QStringLiteral("Choose one of the color schemes above. "
-                                     "It is applied immediately to Plasma and "
-                                     "Aero7 applications."));
-              });
+              [this]() { openWindowColor(); });
     addAction("preferences-desktop-sound", "Sounds",
               [this]() { emit soundRequested(); });
     addAction("preferences-desktop-screensaver", "Screen\nSaver",
@@ -340,30 +581,24 @@ void PersonalizationPage::refreshHighlight()
 
 void PersonalizationPage::chooseWallpaper()
 {
-    const QString image = QFileDialog::getOpenFileName(
-        this, QStringLiteral("Choose Desktop Background"), QDir::homePath(),
-        QStringLiteral("Images (*.png *.jpg *.jpeg *.webp *.bmp);;All files (*)"));
-    if (image.isEmpty())
-        return;
-    const QString tool = QStandardPaths::findExecutable(
-        QStringLiteral("plasma-apply-wallpaperimage"));
-    if (tool.isEmpty()) {
-        QMessageBox::warning(this, QStringLiteral("Desktop Background"),
-                             QStringLiteral("The Plasma wallpaper service is "
-                                            "not installed."));
-        return;
-    }
-    QProcess process;
-    process.start(tool, {image});
-    if (!process.waitForStarted(2000) || !process.waitForFinished(10000)
-        || process.exitCode() != 0) {
-        const QString detail =
-            QString::fromUtf8(process.readAllStandardError()).trimmed();
+    DesktopBackgroundDialog dialog(this);
+    dialog.exec();
+}
+
+void PersonalizationPage::openWindowColor()
+{
+    const QString loader =
+        QStandardPaths::findExecutable(QStringLiteral("aeroshell-kcmloader"));
+    const QString module = QStringLiteral(
+        "/usr/lib/qt6/plugins/kwin/effects/configs/"
+        "kwin_aeroglassblur_config.so");
+    if (loader.isEmpty() || !QFileInfo::exists(module)) {
         QMessageBox::warning(
-            this, QStringLiteral("Desktop Background"),
-            detail.isEmpty() ? QStringLiteral("The background could not be changed.")
-                             : detail);
+            this, QStringLiteral("Window Color and Appearance"),
+            QStringLiteral("The Aero7 window-color component is not installed."));
+        return;
     }
+    QProcess::startDetached(loader, {module});
 }
 
 void PersonalizationPage::configureLockScreen()

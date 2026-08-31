@@ -16,12 +16,10 @@ class QPixmap;
 // The "Personalization" detail page (Appearance and Personalization), a
 // Control-Panel rendering of the Windows 7 theme picker.
 //
-// Each "theme" is a real KDE colour scheme discovered under the system and user
-// color-schemes directories. A swatch is painted from the scheme's own window /
-// titlebar / selection colours, and clicking one applies it live with
-// `plasma-apply-colorscheme` (no privileges needed, it writes the user's own
-// kdeglobals). The bottom row hands off to the matching KDE modules for
-// wallpaper, colours, sounds and the screen locker.
+// Only Aero7-approved colour schemes are exposed. A swatch is painted from the
+// scheme's own window / titlebar / selection colours, and clicking one applies
+// it live with `plasma-apply-colorscheme`. The bottom row opens Aero7-owned
+// wallpaper, window-color, sound, and lock-screen surfaces.
 class PersonalizationPage : public QWidget {
     Q_OBJECT
 
@@ -56,6 +54,7 @@ private:
     void    applyScheme(int index);
     void    refreshHighlight();
     void    chooseWallpaper();
+    void    openWindowColor();
     void    configureLockScreen();
 
     QList<Scheme>         m_schemes;

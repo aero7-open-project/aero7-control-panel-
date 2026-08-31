@@ -15,6 +15,9 @@
 #include <QFile>
 #include <QPushButton>
 #include <QStandardPaths>
+#include <QStorageInfo>
+#include <QNetworkInterface>
+#include <QProcess>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 
@@ -41,6 +44,39 @@ ActionCenterPage::AcInfo ActionCenterPage::gatherInfo()
     if (auto *iface = QDBusConnection::systemBus().interface())
         ac.uacOn = iface->isServiceRegistered(
             QStringLiteral("org.freedesktop.PolicyKit1"));
+
+    for (const QNetworkInterface &interface : QNetworkInterface::allInterfaces()) {
+        const auto flags = interface.flags();
+        if (!flags.testFlag(QNetworkInterface::IsLoopBack)
+            && flags.testFlag(QNetworkInterface::IsUp)
+            && flags.testFlag(QNetworkInterface::IsRunning)) {
+            ac.networkUp = true;
+            break;
+        }
+    }
+
+    QProcess services;
+    services.start(QStringLiteral("systemctl"),
+                   {QStringLiteral("--failed"), QStringLiteral("--no-legend"),
+                    QStringLiteral("--plain")});
+    if (services.waitForFinished(2500))
+        ac.failedServices = QString::fromUtf8(services.readAllStandardOutput())
+                                .split(QLatin1Char('\n'), Qt::SkipEmptyParts).size();
+
+    if (!QStandardPaths::findExecutable(QStringLiteral("pacman")).isEmpty()) {
+        QProcess updates;
+        updates.start(QStringLiteral("pacman"), {QStringLiteral("-Qu")});
+        if (updates.waitForFinished(5000))
+            ac.updatesAvailable = QString::fromUtf8(updates.readAllStandardOutput())
+                                      .split(QLatin1Char('\n'), Qt::SkipEmptyParts).size();
+    }
+
+    const QStorageInfo storage = QStorageInfo::root();
+    ac.diskLow = storage.isValid() && storage.isReady() && storage.bytesTotal() > 0
+        && double(storage.bytesAvailable()) / double(storage.bytesTotal()) < 0.05;
+    ac.backupConfigured = QFile::exists(
+        QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+        + QStringLiteral("/aero7/backup.conf"));
 
     return ac;
 }
@@ -279,8 +315,12 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
         Win7::pageTitle("Review recent messages and resolve problems", 13));
     contentV->addSpacing(8);
 
-    auto *blurb = bodyLabel(
-        "Action Center has detected one or more issues for you to review.");
+    const int issueCount = (!info.firewallOn) + (!info.uacOn) + (!info.networkUp)
+        + (info.failedServices > 0) + (info.updatesAvailable > 0) + info.diskLow
+        + (!info.backupConfigured);
+    auto *blurb = bodyLabel(issueCount == 0
+        ? QStringLiteral("Action Center did not detect any current security or maintenance issues.")
+        : QStringLiteral("Action Center detected %1 issue(s) for you to review.").arg(issueCount));
     contentV->addWidget(blurb);
     contentV->addSpacing(14);
 
@@ -298,10 +338,6 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
                                   "protecting your computer.")
                 : Branding::brand("Linux Firewall (ufw) is turned off.")));
         v->addWidget(buildStatusRow(
-            Branding::brand("Linux Update"), "On",
-            Branding::brand("Linux will automatically install updates as they "
-                            "become available.")));
-        v->addWidget(buildStatusRow(
             "Spyware and unwanted software protection",
             info.avPresent ? "On" : "Off",
             info.avPresent
@@ -310,10 +346,6 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
                 : QStringLiteral("No antivirus program is installed."),
             "View installed antivirus programs"));
         v->addWidget(buildStatusRow(
-            "Internet security settings", "OK",
-            "All Internet security settings are set to their recommended "
-            "levels."));
-        v->addWidget(buildStatusRow(
             "Administrator approval", info.uacOn ? "On" : "Off",
             info.uacOn
                 ? "polkit will prompt for authentication when programs try to "
@@ -321,8 +353,9 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
                 : "polkit authentication is not available.",
             "About administrator approval"));
         v->addWidget(buildStatusRow(
-            "Network security", info.firewallOn ? "Protected" : "Review",
-            "Review the active connection and firewall status.",
+            "Network status", info.networkUp ? "Connected" : "Disconnected",
+            info.networkUp ? "At least one non-loopback network interface is active."
+                           : "No active wired or wireless network interface was detected.",
             "Review network settings"));
     }
     contentV->addWidget(buildSection("Security", /*expanded=*/false,
@@ -336,28 +369,45 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
         v->setContentsMargins(0, 0, 0, 0);
         v->setSpacing(14);
         v->addWidget(buildStatusRow(
-            "Check for solutions to problem reports", "Off",
-            "Problem reporting is turned off."));
+            "Backup", info.backupConfigured ? "Configured" : "Not set up",
+            info.backupConfigured
+                ? "Aero7 has a saved backup configuration."
+                : "No Aero7 backup configuration was found."));
         v->addWidget(buildStatusRow(
-            "Backup", "Not set up",
-            "Your files are not being backed up."));
+            "Check for updates",
+            info.updatesAvailable < 0 ? "Unavailable"
+              : info.updatesAvailable == 0 ? "No action needed"
+                                           : QStringLiteral("%1 available").arg(info.updatesAvailable),
+            info.updatesAvailable < 0
+                ? "No supported package update query is available."
+                : info.updatesAvailable == 0
+                    ? "The local package databases report no pending updates."
+                    : QStringLiteral("The local package databases report %1 pending update(s).")
+                          .arg(info.updatesAvailable)));
         v->addWidget(buildStatusRow(
-            "Check for updates", "No action needed",
-            Branding::brand("Linux Update does not require any action.")));
+            "System services", info.failedServices == 0 ? "No action needed"
+                                                         : QStringLiteral("%1 failed").arg(info.failedServices),
+            info.failedServices == 0
+                ? "systemd reports no failed system services."
+                : QStringLiteral("systemd reports %1 failed system service(s).")
+                      .arg(info.failedServices)));
         v->addWidget(buildStatusRow(
-            "Troubleshooting: System Maintenance", "No action needed",
-            "The system is actively checking for maintenance problems."));
+            "Storage", info.diskLow ? "Low disk space" : "No action needed",
+            info.diskLow ? "The system drive has less than 5% free space."
+                         : "The system drive has at least 5% free space."));
     }
     contentV->addWidget(buildSection("Maintenance", /*expanded=*/false,
                                      maintRows));
     contentV->addSpacing(14);
 
     // Backup availability is shown outside the collapsed maintenance section.
-    contentV->addWidget(buildAlertBox(
-        "Backup is not configured",
-        "A dedicated Aero7 backup engine is not installed yet.",
-        "Review backup options", "About backup availability"));
-    contentV->addSpacing(24);
+    if (!info.backupConfigured) {
+        contentV->addWidget(buildAlertBox(
+            "Backup is not configured",
+            "No Aero7 backup configuration exists for this user.",
+            "Review backup options", "About backup availability"));
+        contentV->addSpacing(24);
+    }
 
     // ---- Bottom "If you don't see your problem listed" --------------------
     auto *bottomIntro = bodyLabel(

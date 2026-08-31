@@ -8,9 +8,10 @@ without a safe backend is disabled and explains why.
 
 Open **Control Panel** from the Start menu. Use the breadcrumb bar to return to
 a category or **Control Panel Home**. The view menu switches between category,
-large-icon, and small-icon layouts without changing which settings exist.
+large-icon, and small-icon layouts. It also opens the persistent Windows 7/KDE
+Plasma naming preference without changing which settings exist or their backend.
 
-Use **Search Control Panel** to search by Aero7 wording or an original KDE
+Use **Search Control Panel** to search by Windows 7 wording or a KDE Plasma
 setting name. For a complete alphabetical lookup, see the
 [Settings Reference](Settings-Reference).
 
@@ -25,7 +26,7 @@ setting name. For a complete alphabetical lookup, see the
 - **Performance Information and Tools** opens the Aero7 performance benchmark
   and detailed component scores.
 
-### Linux Update
+### Windows Update
 
 - Checks the configured Arch Linux and Aero7 repositories using `pacman`.
 - Installs the complete dependency-consistent update transaction after an
@@ -33,7 +34,7 @@ setting name. For a complete alphabetical lookup, see the
 - Shows installed update history from `/var/log/pacman.log`.
 - Restart Aero7 when a kernel or core desktop update says a restart is needed.
 
-### Linux Firewall
+### Windows Firewall
 
 - Shows UFW state, active network context, rules, and logging level.
 - **Turn firewall on/off** runs the corresponding `ufw` action after an
@@ -46,7 +47,7 @@ setting name. For a complete alphabetical lookup, see the
   when it is installed.
 
 If Control Panel reports **Restart required**, a kernel update has left the
-currently running firewall backend without matching modules. Finish Linux
+currently running firewall backend without matching modules. Finish Windows
 Update, restart Aero7, and return to the page. Firewall mutation buttons remain
 disabled until the backend probe succeeds.
 
@@ -177,16 +178,16 @@ control that does nothing as a bug.
 
 ## Troubleshooting
 
-1. Run Linux Update, install all pending updates, and restart Aero7.
+1. Run Windows Update, install all pending updates, and restart Aero7.
 2. Search for the setting again and read any missing-module message.
 3. For networking, confirm NetworkManager is running and the device appears in
    Network and Sharing Center.
-4. For firewall problems, open Linux Firewall and follow any restart-required
+4. For firewall problems, open Windows Firewall and follow any restart-required
    notice before changing UFW manually.
 5. For a hardware-specific page, confirm the device is detected and the
    optional KDE module is installed.
-6. When filing an issue, include the Aero7 setting name, original KDE name,
+6. When filing an issue, include the Windows 7 name, KDE Plasma name,
    backend identifier, Aero7 version, and the exact error message.
 
-Use the [Settings Reference](Settings-Reference) to find the original KDE name
+Use the [Settings Reference](Settings-Reference) to find the KDE Plasma name
 and module identifier needed for a report.

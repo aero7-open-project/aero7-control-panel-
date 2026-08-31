@@ -40,6 +40,7 @@
 #include "Branding.h"
 #include "PageId.h"
 #include "PageRegistry.h"
+#include "ControlPanelItems.h"
 #include "SettingsCatalog.h"
 #include "SettingsHubPage.h"
 #include "Commands.h"
@@ -54,12 +55,17 @@
 #include "pages/PerformancePage.h"
 #include "dialogs/SoundDialog.h"
 #include "pages/PersonalizationPage.h"
+#include "pages/TaskbarStartMenuPage.h"
+#include "pages/FolderOptionsPage.h"
 #include "pages/GettingStartedPage.h"
 #include "pages/FontsPage.h"
 #include "pages/UserAccountsPage.h"
 #include "pages/EaseOfAccessPage.h"
 #include "pages/DevicesAndPrintersPage.h"
+#include "pages/DisplayPage.h"
+#include "pages/DefaultProgramsPage.h"
 #include "dialogs/DateTimeDialog.h"
+#include "dialogs/LinverConfigDialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -72,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
     resize(1000, 650);
 
     m_navSound.setSource(QUrl::fromLocalFile(
-        "/usr/share/sounds/Windows 7/og/Windows Navigation Start.wav"));
+        "/usr/share/sounds/Aero7/og/Aero7 Navigation Start.wav"));
     m_navSound.setVolume(1.0f);
 
     // Hide menu bar (like real Windows 7 Control Panel)
@@ -677,18 +683,35 @@ void MainWindow::showEntry(const QString &entry)
             // their native Aero7 implementation is complete.
             const PageId pageId = PageRegistry::idForPath(entry);
             switch (pageId) {
-            case PageId::DisplaySettings:
+            case PageId::DisplaySettings: {
+                auto *sidebar = buildSubpageSidebar(
+                    DisplayPage::sidebarLinks(), DisplayPage::sidebarSeeAlso());
+                m_scroll->setWidget(new DisplayPage(sidebar));
+                break;
+            }
+            case PageId::TaskbarStartMenu: {
+                auto *sidebar = buildSubpageSidebar({});
+                m_scroll->setWidget(new TaskbarStartMenuPage(sidebar));
+                break;
+            }
+            case PageId::FolderOptions: {
+                auto *sidebar = buildSubpageSidebar({});
+                m_scroll->setWidget(new FolderOptionsPage(sidebar));
+                break;
+            }
+            case PageId::DefaultPrograms: {
+                auto *sidebar = buildSubpageSidebar({});
+                m_scroll->setWidget(new DefaultProgramsPage(sidebar));
+                break;
+            }
             case PageId::NetworkSettings:
             case PageId::RegionLanguage:
-            case PageId::TaskbarStartMenu:
-            case PageId::DefaultPrograms:
             case PageId::InputDevices:
             case PageId::StartupShutdown:
             case PageId::WindowBehavior:
             case PageId::SecurityMaintenance:
             case PageId::StorageAdministration:
             case PageId::InternetOptions:
-            case PageId::FolderOptions:
             case PageId::AutoPlay:
             case PageId::BackupRestore: {
                 auto *sidebar = buildSubpageSidebar({});
@@ -785,15 +808,21 @@ QWidget *MainWindow::buildHomePage()
     outerH->setContentsMargins(0, 0, 0, 0);
     outerH->setSpacing(0);
 
-    // Inner column: sized to its content (the two-column grid), holds heading
-    // row + grid. Centred in the white area like the real Control Panel.
+    // Category view is a centred two-column list. "All Control Panel Items"
+    // instead fills the available width, as the reference VM does.
     auto *inner = new QWidget;
     inner->setStyleSheet("background: transparent;");
-    inner->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-
-    outerH->addStretch(1);
-    outerH->addWidget(inner, 0, Qt::AlignTop);
-    outerH->addStretch(1);
+    if (m_viewMode == ViewMode::Category) {
+        inner->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        outerH->addStretch(1);
+        outerH->addWidget(inner, 0, Qt::AlignTop);
+        outerH->addStretch(1);
+    } else {
+        setCrumbTrail({QStringLiteral("All Control Panel Items")});
+        outerH->setContentsMargins(16, 0, 16, 0);
+        inner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        outerH->addWidget(inner, 1, Qt::AlignTop);
+    }
 
     auto *innerV = new QVBoxLayout(inner);
     innerV->setContentsMargins(0, 15, 0, 10);
@@ -823,6 +852,11 @@ QWidget *MainWindow::buildHomePage()
             ? QStringLiteral("Large icons") : QStringLiteral("Small icons");
     auto *categoryBtn = new Win7::MenuButton(viewText);
     auto *viewMenu = new QMenu(categoryBtn);
+    viewMenu->setStyleSheet(
+        "QMenu { background: #ffffff; color: #111111; border: 1px solid #8e9dac; padding: 2px; }"
+        "QMenu::item { padding: 4px 24px 4px 22px; }"
+        "QMenu::item:selected { background: #dcecff; color: #111111; border: 1px solid #84acdd; }"
+    );
     auto setView = [this](ViewMode mode) {
         if (m_viewMode == mode)
             return;
@@ -835,15 +869,26 @@ QWidget *MainWindow::buildHomePage()
                      this, [setView]() { setView(ViewMode::LargeIcons); });
     QObject::connect(viewMenu->addAction("Small icons"), &QAction::triggered,
                      this, [setView]() { setView(ViewMode::SmallIcons); });
+    viewMenu->addSeparator();
+    auto *namingAction = viewMenu->addAction(
+        Branding::useWindowsNames()
+            ? QStringLiteral("Use KDE Plasma names...")
+            : QStringLiteral("Use Windows 7 names..."));
+    namingAction->setObjectName(QStringLiteral("control-panel-naming-action"));
+    QObject::connect(namingAction, &QAction::triggered, this, [this]() {
+        LinverConfigDialog dialog(QStringLiteral("Aero7 Linux"), this);
+        if (dialog.exec() == QDialog::Accepted)
+            showEntry(QString());
+    });
     categoryBtn->setMenu(viewMenu);
     headRow->addWidget(categoryBtn);
 
     innerV->addLayout(headRow);
 
     if (m_viewMode != ViewMode::Category) {
-        // Icon views are catalog-driven, so every displayed item has a tested
-        // destination and the KDE-origin metadata remains available to search
-        // and documentation without exposing System Settings itself.
+        // This public inventory mirrors Windows 7's 45 applets. The internal
+        // settings catalog remains available to Start/search, but is not the
+        // UI presented as "All Control Panel Items".
         auto *gridWidget = new QWidget;
         gridWidget->setStyleSheet("background: transparent;");
         auto *grid = new QGridLayout(gridWidget);
@@ -851,36 +896,43 @@ QWidget *MainWindow::buildHomePage()
         grid->setHorizontalSpacing(20);
         grid->setVerticalSpacing(m_viewMode == ViewMode::LargeIcons ? 14 : 8);
 
-        QList<SettingDefinition> entries = SettingsCatalog::all();
-        std::sort(entries.begin(), entries.end(),
-                  [](const SettingDefinition &a, const SettingDefinition &b) {
-                      return QString::localeAwareCompare(a.aeroName, b.aeroName) < 0;
-                  });
-        const int columns = m_viewMode == ViewMode::LargeIcons ? 3 : 4;
+        const QList<ControlPanelItem> &entries = controlPanelItems();
+        const int columns = 5;
+        const int rows = (entries.size() + columns - 1) / columns;
         const int iconSize = m_viewMode == ViewMode::LargeIcons ? 32 : 16;
         for (int i = 0; i < entries.size(); ++i) {
-            const SettingDefinition setting = entries.at(i);
+            const ControlPanelItem setting = entries.at(i);
             auto *cell = new QWidget;
             cell->setStyleSheet("background: transparent;");
+            cell->setMinimumWidth(155);
             auto *h = new QHBoxLayout(cell);
-            h->setContentsMargins(2, 2, 2, 2);
+            h->setContentsMargins(2, 3, 2, 3);
             h->setSpacing(8);
             auto *icon = new QLabel;
             icon->setFixedSize(iconSize, iconSize);
             icon->setPixmap(resolveIcon(setting.iconName).pixmap(iconSize, iconSize));
             icon->setStyleSheet("background: transparent;");
             h->addWidget(icon, 0, Qt::AlignTop);
-            auto *label = new QLabel(setting.aeroName);
-            label->setObjectName(QStringLiteral("all-item-") + setting.key);
-            label->setToolTip(QStringLiteral("Original KDE name: %1").arg(setting.kdeName));
+            const QString displayName = Branding::useWindowsNames()
+                ? setting.windowsName : setting.kdeName;
+            auto *label = new QLabel(displayName);
+            label->setObjectName(QStringLiteral("all-item-") +
+                                 QString(setting.windowsName).toLower().replace(' ', '-'));
+            label->setProperty("windowsName", setting.windowsName);
+            label->setProperty("kdeName", setting.kdeName);
+            label->setToolTip(
+                Branding::useWindowsNames()
+                    ? QStringLiteral("KDE Plasma name: %1").arg(setting.kdeName)
+                    : QStringLiteral("Windows 7 name: %1").arg(setting.windowsName));
             label->setWordWrap(true);
             label->setCursor(Qt::PointingHandCursor);
             label->setStyleSheet(
-                "QLabel { color: #1F4E99; background: transparent; }"
-                "QLabel:hover { color: #0033AA; text-decoration: underline; }");
+                "QLabel { color: #087f23; background: transparent; }"
+                "QLabel:hover { color: #005c16; text-decoration: underline; }");
             label->installEventFilter(this);
-            registerLinkTarget(label, SettingsCatalog::targetForSetting(setting));
+            registerLinkTarget(label, setting.target);
             h->addWidget(label, 1, Qt::AlignVCenter);
+            // Windows 7 lays its alphabetic list across each five-item row.
             grid->addWidget(cell, i / columns, i % columns);
         }
         for (int c = 0; c < columns; ++c)
@@ -1047,7 +1099,9 @@ QWidget *MainWindow::buildSearchResultsPage(const QString &query)
         auto *text = new QVBoxLayout;
         text->setContentsMargins(0, 0, 0, 0);
         text->setSpacing(1);
-        auto *link = new QLabel(setting.aeroName);
+        const QString displayName = Branding::useWindowsNames()
+            ? setting.aeroName : setting.kdeName;
+        auto *link = new QLabel(displayName);
         link->setObjectName(QStringLiteral("search-result-") + setting.key);
         link->setCursor(Qt::PointingHandCursor);
         link->setStyleSheet(
@@ -1056,9 +1110,12 @@ QWidget *MainWindow::buildSearchResultsPage(const QString &query)
         link->installEventFilter(this);
         registerLinkTarget(link, SettingsCatalog::targetForSetting(setting));
         text->addWidget(link);
+        const QString alternateName = Branding::useWindowsNames()
+            ? QStringLiteral("KDE Plasma name: %1").arg(setting.kdeName)
+            : QStringLiteral("Windows 7 name: %1").arg(setting.aeroName);
         text->addWidget(Win7::label(
-            QStringLiteral("%1  ·  Original KDE name: %2")
-                .arg(setting.description, setting.kdeName), 8, "#555555"));
+            QStringLiteral("%1  ·  %2")
+                .arg(setting.description, alternateName), 8, "#555555"));
         rowLayout->addLayout(text, 1);
         layout->addWidget(row);
     }
@@ -1381,29 +1438,25 @@ QWidget *MainWindow::buildCategoryPage(const QString &currentCategory)
             { "Change your Linux Password",                  kUserAccountsPath },
             { "Let Linux suggest settings",                  kEaseOfAccessPath },
             { "Optimize visual display",                     kEaseOfAccessPath },
-        };
-        static const QHash<QString, QStringList> taskCmd = {
-            { "Mouse",                                       kcm("kcm_mouse") },
-            { "Change desktop background",                   kcm("kcm_wallpaper") },
-            { "Change window glass colors",                  kcm("kcm_colors") },
-            { "Change screen saver",                         kcm("kcm_screenlocker") },
-            { "Adjust screen resolution",                    kcm("kcm_kscreen") },
-            { "Make text and other items larger or smaller", kcm("kcm_kscreen") },
-            { "Connect to an external display",              kcm("kcm_kscreen") },
-            { "Change Font Settings",                        kcm("kcm_fonts") },
-            { "Adjust ClearType text",                       kcm("kcm_fonts") },
-            { "Set your default programs",                   kcm("kcm_componentchooser") },
-            { "Make a file type always open in a specific program",
-              kcm("kcm_filetypes") },
-            { "Change keyboards or other input methods",     kcm("kcm_keyboard") },
-            { "Change display language",                     kcm("kcm_regionandlang") },
-            { "Install or uninstall display languages",      kcm("kcm_regionandlang") },
-            { "Change the date, time, or number format",     kcm("kcm_regionandlang") },
-            { "Change location",                             kcm("kcm_regionandlang") },
-            { "Change how your mouse works",                 kcm("kcm_mouse") },
-            { "Change how your keyboard works",              kcm("kcm_access") },
-            { "Start speech recognition",                    kcm("kcm_access") },
-            { "Set up a microphone",                         kcm("kcm_pulseaudio") },
+            { "Adjust screen resolution",                    PageRegistry::pathFor(PageId::DisplaySettings) },
+            { "Make text and other items larger or smaller", PageRegistry::pathFor(PageId::DisplaySettings) },
+            { "Connect to an external display",              PageRegistry::pathFor(PageId::DisplaySettings) },
+            { "Mouse",                                       PageRegistry::pathFor(PageId::InputDevices) },
+            { "Change desktop background",                   kPersonalizationPath },
+            { "Change window glass colors",                  kPersonalizationPath },
+            { "Change screen saver",                         PageRegistry::pathFor(PageId::StartupShutdown) },
+            { "Change Font Settings",                        kFontsPath },
+            { "Adjust ClearType text",                       kFontsPath },
+            { "Set your default programs",                   PageRegistry::pathFor(PageId::DefaultPrograms) },
+            { "Make a file type always open in a specific program", PageRegistry::pathFor(PageId::DefaultPrograms) },
+            { "Change keyboards or other input methods",     PageRegistry::pathFor(PageId::InputDevices) },
+            { "Change display language",                     PageRegistry::pathFor(PageId::RegionLanguage) },
+            { "Install or uninstall display languages",      PageRegistry::pathFor(PageId::RegionLanguage) },
+            { "Change the date, time, or number format",     PageRegistry::pathFor(PageId::RegionLanguage) },
+            { "Change location",                             PageRegistry::pathFor(PageId::RegionLanguage) },
+            { "Change how your mouse works",                 PageRegistry::pathFor(PageId::InputDevices) },
+            { "Change how your keyboard works",              kEaseOfAccessPath },
+            { "Start speech recognition",                    kEaseOfAccessPath },
         };
         if (!m_subpageLinks.contains(l) && !m_commandLinks.contains(l)) {
             const auto appIt = taskApplet.constFind(text);
@@ -1413,11 +1466,6 @@ QWidget *MainWindow::buildCategoryPage(const QString &currentCategory)
                 const auto navIt = taskNav.constFind(text);
                 if (navIt != taskNav.constEnd())
                     m_subpageLinks.insert(l, navIt.value());
-                else {
-                    const auto cmdIt = taskCmd.constFind(text);
-                    if (cmdIt != taskCmd.constEnd())
-                        m_commandLinks.insert(l, cmdIt.value());
-                }
             }
         }
         if (!m_subpageLinks.contains(l) && !m_commandLinks.contains(l)

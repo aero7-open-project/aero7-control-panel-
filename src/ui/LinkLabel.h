@@ -73,9 +73,8 @@ protected:
     }
 };
 
-// Launch an external helper (a kcmshell6 module, kfontview, a settings applet…)
-// detached. If the program isn't on PATH, tell the user rather than failing
-// silently, the same courtesy MainWindow extends to its own command links.
+// Launch an approved standalone helper detached. Settings are always handled
+// by Aero7 pages/dialogs; this helper is only for independent applications.
 inline void launchDetached(QWidget *parent, const QStringList &cmd)
 {
     if (cmd.isEmpty())
@@ -88,38 +87,5 @@ inline void launchDetached(QWidget *parent, const QStringList &cmd)
         return;
     }
 
-    // kcmshell6 itself may be installed while an individual settings module is
-    // not. Validate the module first so a Control Panel item never appears to
-    // do nothing. The list is cached because every catalog row uses this same
-    // bridge during a session.
-    if (program == QStringLiteral("kcmshell6") && !args.isEmpty()) {
-        static const QSet<QString> modules = [] {
-            QSet<QString> available;
-            QProcess probe;
-            probe.start(QStringLiteral("kcmshell6"),
-                        {QStringLiteral("--list")});
-            if (!probe.waitForFinished(3000))
-                return available;
-            const QString output = QString::fromUtf8(
-                probe.readAllStandardOutput() + probe.readAllStandardError());
-            for (const QString &line : output.split('\n', Qt::SkipEmptyParts)) {
-                const QString module = line.section(' ', 0, 0).trimmed();
-                if (module.startsWith(QStringLiteral("kcm_")))
-                    available.insert(module);
-            }
-            return available;
-        }();
-        const QString module = args.constFirst();
-        if (!modules.isEmpty() && !modules.contains(module)) {
-            QMessageBox::warning(
-                parent, QStringLiteral("Control Panel"),
-                QStringLiteral("The settings component \"%1\" is not installed.\n\n"
-                               "The Aero7 name remains available in Control Panel, "
-                               "but its KDE compatibility backend must be installed "
-                               "before this setting can open.")
-                    .arg(module));
-            return;
-        }
-    }
     QProcess::startDetached(program, args);
 }

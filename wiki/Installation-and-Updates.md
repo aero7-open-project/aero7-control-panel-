@@ -16,7 +16,7 @@ search integration, and required runtime metadata.
 
 ## Update
 
-Use **Control Panel > System and Security > Linux Update**, or run:
+Use **Control Panel > System and Security > Windows Update**, or run:
 
 ```bash
 sudo pacman -Syu
