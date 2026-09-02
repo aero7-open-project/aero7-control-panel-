@@ -17,6 +17,7 @@ find_package(Cups REQUIRED)
 
 add_executable(controlpanel
     src/main.cpp
+    src/features/FeatureCatalog.cpp
     src/ui/LinkLabel.h
     src/ui/MainWindow.cpp
     src/ui/PageRegistry.cpp
@@ -30,6 +31,8 @@ add_executable(controlpanel
     src/ui/pages/NetworkSharingPage.cpp
     src/ui/pages/FirewallPage.cpp
     src/ui/pages/ActionCenterPage.cpp
+    src/ui/pages/FeatureRequiredPage.cpp
+    src/ui/pages/ParentalControlsPage.cpp
     src/ui/pages/PowerOptionsPage.cpp
     src/ui/pages/PerformancePage.cpp
     src/ui/pages/PersonalizationPage.cpp
@@ -67,6 +70,7 @@ add_executable(controlpanel
 )
 
 target_include_directories(controlpanel PRIVATE
+    src/features
     src/ui
     src/ui/pages
     src/ui/dialogs
@@ -74,6 +78,9 @@ target_include_directories(controlpanel PRIVATE
     src/data
     src
 )
+
+target_compile_definitions(controlpanel PRIVATE
+    AERO7_FEATURE_CATALOG_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/resources/aero7-features.json")
 
 target_link_libraries(controlpanel PRIVATE
     Qt6::Widgets
@@ -95,6 +102,24 @@ set_target_properties(controlpanel PROPERTIES
 )
 
 install(TARGETS controlpanel RUNTIME DESTINATION bin)
+add_executable(aero7-optional-features
+    src/optionalfeatures/main.cpp
+    src/optionalfeatures/OptionalFeaturesWindow.cpp
+    src/features/FeatureCatalog.cpp
+)
+target_include_directories(aero7-optional-features PRIVATE
+    src/optionalfeatures src/features src/ui)
+target_compile_definitions(aero7-optional-features PRIVATE
+    AERO7_FEATURE_CATALOG_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/resources/aero7-features.json")
+target_link_libraries(aero7-optional-features PRIVATE
+    Qt6::Widgets Aero7Qt::Aero7Qt)
+install(TARGETS aero7-optional-features RUNTIME DESTINATION bin)
+install(FILES resources/aero7-features.json
+    DESTINATION share/aero7-control-panel RENAME features.json)
+install(PROGRAMS helpers/aero7-feature-helper
+    DESTINATION lib/aero7-control-panel)
+install(FILES polkit/org.aero7.optional-features.policy
+    DESTINATION share/polkit-1/actions)
 add_executable(aero7-action-center src/actioncenter/main.cpp)
 target_include_directories(aero7-action-center PRIVATE src/ui)
 target_link_libraries(aero7-action-center PRIVATE
@@ -104,11 +129,15 @@ install(FILES aero7-action-center.desktop DESTINATION /etc/xdg/autostart)
 install(FILES
     linux-controlpanel.desktop
     aero7-getting-started.desktop
+    aero7-optional-features.desktop
     DESTINATION share/applications
 )
 
 include(CTest)
 if(BUILD_TESTING)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME feature-helper-test
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_feature_helper.py)
     add_executable(branding-test
         tests/BrandingTest.cpp
         src/data/Branding.cpp
@@ -162,6 +191,16 @@ if(BUILD_TESTING)
     target_include_directories(settings-catalog-test PRIVATE src/ui)
     target_link_libraries(settings-catalog-test PRIVATE Qt6::Core)
     add_test(NAME settings-catalog-test COMMAND settings-catalog-test)
+
+    add_executable(feature-catalog-test
+        tests/FeatureCatalogTest.cpp
+        src/features/FeatureCatalog.cpp
+    )
+    target_include_directories(feature-catalog-test PRIVATE src/features)
+    target_compile_definitions(feature-catalog-test PRIVATE
+        AERO7_FEATURE_CATALOG_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/resources/aero7-features.json")
+    target_link_libraries(feature-catalog-test PRIVATE Qt6::Core)
+    add_test(NAME feature-catalog-test COMMAND feature-catalog-test)
 
     add_executable(settings-hub-page-test
         tests/SettingsHubPageTest.cpp

@@ -31,21 +31,28 @@ ControlPanelItem item(const char *windowsName, const char *kdeName,
                       const char *icon, PageId id)
 {
     return {QString::fromUtf8(windowsName), QString::fromUtf8(kdeName),
-            QString::fromLatin1(icon), page(id)};
+            QString::fromLatin1(icon), page(id), {}};
+}
+
+ControlPanelItem featureItem(const char *windowsName, const char *kdeName,
+                             const char *icon, PageId id, const char *feature)
+{
+    return {QString::fromUtf8(windowsName), QString::fromUtf8(kdeName),
+            QString::fromLatin1(icon), page(id), QString::fromLatin1(feature)};
 }
 
 ControlPanelItem dialogItem(const char *windowsName, const char *kdeName,
                             const char *icon, const char *id)
 {
     return {QString::fromUtf8(windowsName), QString::fromUtf8(kdeName),
-            QString::fromLatin1(icon), applet(id)};
+            QString::fromLatin1(icon), applet(id), {}};
 }
 
 ControlPanelItem commandItem(const char *windowsName, const char *kdeName,
                              const char *icon, const QStringList &value)
 {
     return {QString::fromUtf8(windowsName), QString::fromUtf8(kdeName),
-            QString::fromLatin1(icon), command(value)};
+            QString::fromLatin1(icon), command(value), {}};
 }
 
 } // namespace
@@ -58,8 +65,8 @@ const QList<ControlPanelItem> &controlPanelItems()
         item("Action Center", "Security and Maintenance", "dialog-information", PageId::ActionCenter),
         commandItem("Administrative Tools", "System Administration", "applications-system", kComputerManagementCmd),
         item("AutoPlay", "Removable Device Actions", "media-optical-audio", PageId::AutoPlay),
-        item("Backup and Restore", "Backups", "document-revert", PageId::BackupRestore),
-        item("Color Management", "Colors", "preferences-desktop-color", PageId::Personalization),
+        featureItem("Backup and Restore", "Backups", "document-revert", PageId::BackupRestore, "backup-restore"),
+        featureItem("Color Management", "Colors", "preferences-desktop-color", PageId::Personalization, "color-management"),
         item("Credential Manager", "Credentials", "dialog-password", PageId::UserAccounts),
         dialogItem("Date and Time", "Date & Time", "preferences-system-time", "datetime"),
         item("Default Programs", "Default Applications", "preferences-desktop-default-applications", PageId::DefaultPrograms),
@@ -71,7 +78,7 @@ const QList<ControlPanelItem> &controlPanelItems()
         item("Folder Options", "File Manager Settings", "folder-open", PageId::FolderOptions),
         item("Fonts", "Font Management", "preferences-desktop-font", PageId::Fonts),
         item("Getting Started", "Welcome Center", "help-about", PageId::GettingStarted),
-        item("HomeGroup", "File Sharing", "network-workgroup", PageId::NetworkSettings),
+        featureItem("HomeGroup", "File Sharing", "network-workgroup", PageId::NetworkSettings, "file-printer-sharing"),
         item("Indexing Options", "File Search", "system-search", PageId::FolderOptions),
         item("Internet Options", "Proxy and Web Settings", "internet-web-browser", PageId::InternetOptions),
         item("Keyboard", "Keyboard", "input-keyboard", PageId::InputDevices),
@@ -79,25 +86,25 @@ const QList<ControlPanelItem> &controlPanelItems()
         item("Mouse", "Mouse", "input-mouse", PageId::InputDevices),
         item("Network and Sharing Center", "Connections", "preferences-system-network", PageId::NetworkSharing),
         item("Notification Area Icons", "Notifications", "preferences-desktop-notification", PageId::TaskbarStartMenu),
-        item("Parental Controls", "Parental Controls", "preferences-system-parental-controls", PageId::UserAccounts),
+        featureItem("Parental Controls", "Parental Controls", "preferences-system-parental-controls", PageId::ParentalControls, "parental-controls"),
         item("Performance Information and Tools", "System Performance", "utilities-system-monitor", PageId::Performance),
         item("Personalization", "Global Theme", "preferences-desktop-theme", PageId::Personalization),
-        item("Phone and Modem", "Modem and Mobile Broadband", "modem", PageId::NetworkSettings),
+        featureItem("Phone and Modem", "Modem and Mobile Broadband", "modem", PageId::NetworkSettings, "mobile-broadband"),
         item("Power Options", "Power Management", "preferences-system-power-management", PageId::PowerOptions),
         item("Programs and Features", "Software Management", "system-software-install", PageId::ProgramsFeatures),
-        item("Recovery", "System Recovery", "edit-undo", PageId::BackupRestore),
+        featureItem("Recovery", "System Recovery", "edit-undo", PageId::BackupRestore, "system-recovery"),
         item("Region and Language", "Region & Language", "preferences-desktop-locale", PageId::RegionLanguage),
-        item("RemoteApp and Desktop Connections", "Remote Desktop", "preferences-system-network-server", PageId::NetworkSettings),
+        featureItem("RemoteApp and Desktop Connections", "Remote Desktop", "preferences-system-network-server", PageId::NetworkSettings, "remote-desktop"),
         dialogItem("Sound", "Sound", "preferences-desktop-sound", "sound"),
-        item("Speech Recognition", "Speech Recognition", "audio-input-microphone", PageId::EaseOfAccess),
-        item("Sync Center", "File Synchronization", "folder-sync", PageId::NetworkSettings),
+        featureItem("Speech Recognition", "Speech Recognition", "audio-input-microphone", PageId::EaseOfAccess, "speech-recognition"),
+        featureItem("Sync Center", "File Synchronization", "folder-sync", PageId::NetworkSettings, "sync-center"),
         item("System", "System Information", "computer", PageId::System),
         item("Taskbar and Start Menu", "Desktop Behavior", "preferences-desktop", PageId::TaskbarStartMenu),
         item("Troubleshooting", "Diagnostics", "tools-report-bug", PageId::SecurityMaintenance),
         item("User Accounts", "Users", "preferences-system-users", PageId::UserAccounts),
         item("Windows Anytime Upgrade", "Aero7 Edition and Updates", "system-upgrade", PageId::GettingStarted),
-        item("Windows CardSpace", "Online Identity", "security-high", PageId::UserAccounts),
-        item("Windows Defender", "Malware Protection", "security-high", PageId::SecurityMaintenance),
+        featureItem("Windows CardSpace", "Online Identity", "security-high", PageId::UserAccounts, "legacy-cardspace"),
+        featureItem("Windows Defender", "Malware Protection", "security-high", PageId::SecurityMaintenance, "aero7-defender"),
         item("Windows Firewall", "Firewall", "preferences-security-firewall", PageId::Firewall),
         item("Windows Update", "Software Update", "system-software-update", PageId::LinuxUpdate),
     };

@@ -5,6 +5,7 @@
 #include "Win7Ui.h"
 #include "Branding.h"
 #include "LinkLabel.h"
+#include "FeatureCatalog.h"
 
 #include <QScrollArea>
 #include <QLabel>
@@ -38,6 +39,13 @@ ActionCenterPage::AcInfo ActionCenterPage::gatherInfo()
         ac.avPresent = true;
         ac.avName = QStringLiteral("ClamAV");
     }
+    const FeatureCatalog features = FeatureCatalog::load();
+    ac.avPresent = FeatureCatalog::isEnabled(
+        features.status(QStringLiteral("aero7-defender"), false).state);
+    if (ac.avPresent)
+        ac.avName = QStringLiteral("Aero7 Defender (ClamAV)");
+    ac.backupFeaturePresent = FeatureCatalog::isEnabled(
+        features.status(QStringLiteral("backup-restore"), false).state);
 
     // UAC maps to polkit: administrative actions prompt for authentication when
     // a polkit authority is registered on the system bus (it always is on KDE).
@@ -148,10 +156,17 @@ QWidget *ActionCenterPage::buildStatusRow(const QString &item,
     if (!link.isEmpty()) {
         auto *l = new LinkLabel(link);
         l->setContentsMargins(18, 0, 0, 0);
-        const PageId target = link == "Review network settings"
-                ? PageId::NetworkSettings : PageId::SecurityMaintenance;
-        connect(l, &LinkLabel::clicked, this,
-                [this, target]() { emit navigateRequested(target); });
+        if (link == QLatin1String("Install Aero7 Defender")) {
+            connect(l, &LinkLabel::clicked, this, [this]() {
+                emit optionalFeatureRequested(QStringLiteral("aero7-defender"),
+                                              PageId::SecurityMaintenance);
+            });
+        } else {
+            const PageId target = link == "Review network settings"
+                    ? PageId::NetworkSettings : PageId::SecurityMaintenance;
+            connect(l, &LinkLabel::clicked, this,
+                    [this, target]() { emit navigateRequested(target); });
+        }
         v->addWidget(l);
     }
 
@@ -261,7 +276,13 @@ QWidget *ActionCenterPage::buildAlertBox(const QString &title,
     button->setIcon(themeIcon({"preferences-system-backup", "document-save",
                                "drive-harddisk"}));
     connect(button, &QPushButton::clicked, this,
-            [this]() { emit navigateRequested(PageId::BackupRestore); });
+            [this, buttonText]() {
+                if (buttonText == QLatin1String("Install Backup and Restore"))
+                    emit optionalFeatureRequested(QStringLiteral("backup-restore"),
+                                                  PageId::BackupRestore);
+                else
+                    emit navigateRequested(PageId::BackupRestore);
+            });
     innerH->addWidget(button, 0, Qt::AlignVCenter);
 
     return frame;
@@ -315,7 +336,8 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
         Win7::pageTitle("Review recent messages and resolve problems", 13));
     contentV->addSpacing(8);
 
-    const int issueCount = (!info.firewallOn) + (!info.uacOn) + (!info.networkUp)
+    const int issueCount = (!info.firewallOn) + (!info.avPresent)
+        + (!info.uacOn) + (!info.networkUp)
         + (info.failedServices > 0) + (info.updatesAvailable > 0) + info.diskLow
         + (!info.backupConfigured);
     auto *blurb = bodyLabel(issueCount == 0
@@ -343,8 +365,9 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
             info.avPresent
                 ? QStringLiteral("%1 reports that it is turned on.")
                       .arg(info.avName)
-                : QStringLiteral("No antivirus program is installed."),
-            "View installed antivirus programs"));
+                : QStringLiteral("Aero7 Defender is an optional feature and is not installed."),
+            info.avPresent ? QStringLiteral("View installed antivirus programs")
+                           : QStringLiteral("Install Aero7 Defender")));
         v->addWidget(buildStatusRow(
             "Administrator approval", info.uacOn ? "On" : "Off",
             info.uacOn
@@ -403,9 +426,14 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
     // Backup availability is shown outside the collapsed maintenance section.
     if (!info.backupConfigured) {
         contentV->addWidget(buildAlertBox(
-            "Backup is not configured",
-            "No Aero7 backup configuration exists for this user.",
-            "Review backup options", "About backup availability"));
+            info.backupFeaturePresent ? "Backup is not configured"
+                                      : "Backup and Restore is not installed",
+            info.backupFeaturePresent
+                ? "No Aero7 backup configuration exists for this user."
+                : "Install the optional Backup and Restore feature before creating a backup plan.",
+            info.backupFeaturePresent ? "Review backup options"
+                                      : "Install Backup and Restore",
+            "About backup availability"));
         contentV->addSpacing(24);
     }
 

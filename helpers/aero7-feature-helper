@@ -1,0 +1,399 @@
+#!/usr/bin/python3
+"""Privileged, catalog-allowlisted Aero7 optional-feature transaction helper."""
+
+import argparse
+import itertools
+import json
+import os
+import pwd
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+TESTING = os.environ.get("AERO7_FEATURE_HELPER_TESTING") == "1" and os.geteuid() != 0
+CATALOG = Path(os.environ.get("AERO7_TEST_CATALOG", "")) if TESTING else Path(
+    "/usr/share/aero7-control-panel/features.json")
+LOG = Path(os.environ.get("AERO7_TEST_LOG", "")) if TESTING else Path(
+    "/var/log/aero7/optional-features.jsonl")
+PACMAN = os.environ.get("AERO7_TEST_PACMAN", "") if TESTING else "/usr/bin/pacman"
+SYSTEMCTL = os.environ.get("AERO7_TEST_SYSTEMCTL", "") if TESTING else "/usr/bin/systemctl"
+PACMAN_LOCK = Path(os.environ.get("AERO7_TEST_LOCK", "")) if TESTING else Path(
+    "/var/lib/pacman/db.lck")
+REBOOT_MARKER_DIR = Path(os.environ.get("AERO7_TEST_REBOOT_DIR", "")) if TESTING else Path(
+    "/run/aero7/optional-features-reboot")
+ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
+PKG_RE = re.compile(r"^[a-zA-Z0-9@._+:-]+$")
+
+
+class TransactionError(RuntimeError):
+    def __init__(self, public_message, detail="", exit_code=1):
+        super().__init__(public_message)
+        self.public_message = public_message
+        self.detail = detail or public_message
+        self.exit_code = exit_code
+
+
+def emit(stage, message, feature="", percent=None, detail=""):
+    payload = {"stage": stage, "message": message}
+    if feature:
+        payload["feature"] = feature
+    if percent is not None:
+        payload["percent"] = percent
+    if detail:
+        payload["detail"] = detail
+    print(json.dumps(payload, separators=(",", ":")), flush=True)
+
+
+def log(action, feature, result, detail="", packages=None,
+        reboot_required=False, logout_required=False):
+    LOG.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    record = {
+        "time": int(time.time()),
+        "uid": os.getuid(),
+        "action": action,
+        "feature": feature,
+        "result": result,
+        "detail": detail[:500],
+        "packages": packages or [],
+        "rebootRequired": reboot_required,
+        "logoutRequired": logout_required,
+    }
+    with LOG.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, separators=(",", ":")) + "\n")
+
+
+def load_catalog(path):
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise TransactionError(f"Cannot read the installed feature catalog: {exc}") from exc
+    result = {}
+    for item in raw.get("features", []):
+        feature_id = item.get("id", "")
+        packages = item.get("packages", [])
+        support_packages = item.get("supportPackages", [])
+        services = item.get("services", [])
+        if not ID_RE.fullmatch(feature_id):
+            raise TransactionError("The installed feature catalog contains an invalid id.")
+        if not all(isinstance(p, str) and PKG_RE.fullmatch(p) for p in packages):
+            raise TransactionError(f"Feature {feature_id} contains an invalid package name.")
+        if not all(isinstance(p, str) and PKG_RE.fullmatch(p)
+                   for p in support_packages):
+            raise TransactionError(
+                f"Feature {feature_id} contains an invalid support package name.")
+        if not all(isinstance(s, str) and "%" not in s.replace("%USER%", "")
+                   for s in services):
+            raise TransactionError(f"Feature {feature_id} contains an invalid service name.")
+        result[feature_id] = item
+    return result
+
+
+def run(command, stage, feature, check=True, failure_message="",
+        message="", percent=None):
+    emit(stage, message or "Running " + " ".join(command[:2]) + "…",
+         feature, percent)
+    proc = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, check=False)
+    if check and proc.returncode:
+        detail = proc.stdout.strip() or f"Command exited with status {proc.returncode}."
+        if stage == "installing" and looks_like_network_failure(detail):
+            failure_message = (
+                "Aero7 can't reach the package repositories. "
+                "Check the network connection and try again.")
+        raise TransactionError(
+            failure_message or "Aero7 could not complete the requested system change.",
+            detail)
+    return proc
+
+
+def installed(package):
+    return subprocess.run([PACMAN, "-Q", package], stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def repository_info(package):
+    return subprocess.run([PACMAN, "-Si", package], text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          check=False)
+
+
+def looks_like_network_failure(detail):
+    text = detail.lower()
+    return any(phrase in text for phrase in (
+        "could not resolve host", "failed retrieving file", "network is unreachable",
+        "temporary failure in name resolution", "name or service not known",
+        "connection timed out", "could not connect"))
+
+
+def set_reboot_marker(feature_id, required):
+    marker = REBOOT_MARKER_DIR / feature_id
+    if required:
+        REBOOT_MARKER_DIR.mkdir(mode=0o755, parents=True, exist_ok=True)
+        marker.touch(mode=0o644, exist_ok=True)
+    else:
+        marker.unlink(missing_ok=True)
+
+
+def resolve_user(name):
+    if not name:
+        return None
+    if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", name):
+        raise TransactionError("Invalid desktop user name.")
+    try:
+        entry = pwd.getpwnam(name)
+    except KeyError as exc:
+        raise TransactionError("The requested desktop user does not exist.") from exc
+    if entry.pw_uid < 1000 or entry.pw_uid == 65534:
+        raise TransactionError("Feature services can only be enabled for a desktop user.")
+    return entry.pw_name
+
+
+def service_name(template, user):
+    if "%USER%" in template:
+        if not user:
+            raise TransactionError("This feature requires a desktop user name.")
+        return template.replace("%USER%", user)
+    return template
+
+
+def hardware_present(probe):
+    if probe == "btrfs-root":
+        proc = subprocess.run(["/usr/bin/findmnt", "-n", "-o", "FSTYPE", "/"],
+                              text=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, check=False)
+        return proc.returncode == 0 and proc.stdout.strip() == "btrfs"
+    if probe == "cellular-modem":
+        return (any(Path("/sys/class/tty").glob("ttyUSB*"))
+                or any(Path("/sys/class/tty").glob("ttyACM*"))
+                or any(Path("/sys/class/usbmisc").glob("cdc-wdm*")))
+    return True
+
+
+def package_used_elsewhere(package, current_id, catalog):
+    for other_id, other in catalog.items():
+        if (other_id == current_id
+                or package not in feature_packages(other)):
+            continue
+        if feature_installed(other):
+            return True
+    return False
+
+
+def feature_packages(feature):
+    """Return every package installed for a feature, with stable de-duplication."""
+    return list(dict.fromkeys(
+        feature.get("packages", []) + feature.get("supportPackages", [])))
+
+
+def feature_installed(feature):
+    packages = feature.get("packages", [])
+    support = feature.get("supportPackages", [])
+    return (bool(packages) and all(installed(package) for package in packages)
+            and all(installed(package) for package in support))
+
+
+def removal_is_safe(packages):
+    if not packages:
+        return True
+    proc = subprocess.run(
+        [PACMAN, "--remove", "--print-format", "%n", *packages],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        env={**os.environ, "LC_ALL": "C"}, check=False)
+    return proc.returncode == 0
+
+
+def safest_removal_set(required, optional):
+    """Keep shared support packages while requiring feature anchors to be removable."""
+    required = list(dict.fromkeys(required))
+    optional = [package for package in dict.fromkeys(optional)
+                if package not in required]
+    for count in range(len(optional), -1, -1):
+        for selected in itertools.combinations(optional, count):
+            candidate = required + list(selected)
+            if removal_is_safe(candidate):
+                return candidate
+    return []
+
+
+def install_feature(feature_id, feature, user, progress_start=5, progress_span=90):
+    mode = feature.get("availability", {}).get("mode", "repository")
+    if mode in ("core", "unavailable"):
+        raise TransactionError("This feature cannot be installed or changed.")
+    if mode == "hardware" and not hardware_present(
+            feature.get("availability", {}).get("probe", "")):
+        raise TransactionError("The hardware required by this feature is not present.")
+    packages = feature_packages(feature)
+    missing = [package for package in packages if not installed(package)]
+    emit("checking", "Checking package availability…", feature_id,
+         progress_start + progress_span * 10 // 100)
+    for package in missing:
+        info = repository_info(package)
+        if info.returncode:
+            detail = info.stdout.strip()
+            if looks_like_network_failure(detail):
+                raise TransactionError(
+                    "Aero7 can't reach the package repositories. Check the network connection and try again.",
+                    detail)
+            raise TransactionError(
+                f"Required package {package} is unavailable from the configured repositories.",
+                detail)
+    if missing:
+        run([PACMAN, "--sync", "--needed", "--noconfirm", *missing],
+            "installing", feature_id,
+            failure_message=(
+                "Aero7 could not install the required packages. "
+                "No feature was marked fully installed."),
+            message="Downloading and installing required packages…",
+            percent=progress_start + progress_span * 35 // 100)
+    for template in feature.get("services", []):
+        unit = service_name(template, user)
+        run([SYSTEMCTL, "enable", "--now", unit], "configuring", feature_id,
+            failure_message=(
+                "The packages were installed, but feature configuration did not finish. "
+                "Select Repair after resolving the service problem."),
+            message=f"Configuring {feature['name']}…",
+            percent=progress_start + progress_span * 70 // 100)
+    emit("verifying", "Verifying installation…", feature_id,
+         progress_start + progress_span * 88 // 100)
+    missing_after = [package for package in packages if not installed(package)]
+    if missing_after:
+        raise TransactionError(
+            "Aero7 installed packages, but verification did not complete successfully. Select Repair to try again.",
+            "Packages still missing after installation: " + ", ".join(missing_after))
+    for template in feature.get("services", []):
+        unit = service_name(template, user)
+        proc = subprocess.run([SYSTEMCTL, "is-active", "--quiet", unit],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, check=False)
+        if proc.returncode:
+            raise TransactionError(
+                "The packages were installed, but a required service did not start. Select Repair to try again.",
+                proc.stdout.strip() or f"Required service is not active: {unit}")
+    set_reboot_marker(feature_id, bool(feature.get("rebootRequired", False)))
+
+
+def remove_feature(feature_id, feature, catalog, user,
+                   progress_start=5, progress_span=90):
+    mode = feature.get("availability", {}).get("mode", "repository")
+    if mode == "core":
+        raise TransactionError("Aero7 core components cannot be removed.")
+    for template in feature.get("services", []):
+        unit = service_name(template, user)
+        run([SYSTEMCTL, "disable", "--now", unit], "configuring", feature_id,
+            check=False, message=f"Stopping {feature['name']} services…",
+            percent=progress_start + progress_span * 20 // 100)
+    anchors = [package for package in feature.get("packages", [])
+               if installed(package)
+               and not package_used_elsewhere(package, feature_id, catalog)]
+    support = [package for package in feature.get("supportPackages", [])
+               if installed(package)
+               and not package_used_elsewhere(package, feature_id, catalog)]
+    removable = safest_removal_set(anchors, support)
+    if anchors and not all(package in removable for package in anchors):
+        raise TransactionError(
+            "Aero7 cannot safely remove this feature because another installed component needs it. No shared packages were removed.")
+    if removable:
+        # Deliberately no --recursive and no config/data deletion options.
+        # pacman will refuse removal when another installed package needs one.
+        run([PACMAN, "--remove", "--noconfirm", *removable],
+            "removing", feature_id,
+            failure_message=(
+                "Aero7 could not remove the requested packages. User configuration and data were kept."),
+            message="Removing optional packages…",
+            percent=progress_start + progress_span * 55 // 100)
+    emit("verifying", "Verifying removal…", feature_id,
+         progress_start + progress_span * 88 // 100)
+    still_installed = [package for package in anchors if installed(package)]
+    if still_installed:
+        raise TransactionError(
+            "Aero7 could not verify that every optional package was removed. User configuration and data were kept.",
+            "Packages still installed after removal: " + ", ".join(still_installed))
+    set_reboot_marker(feature_id, False)
+
+
+def main():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--user", default="")
+    parser.add_argument("changes", nargs="+")
+    args = parser.parse_args()
+    if os.geteuid() != 0 and not TESTING:
+        emit("failed", "Administrator authorization is required.")
+        return 77
+    try:
+        catalog = load_catalog(CATALOG)
+        user = resolve_user(args.user)
+        parsed = []
+        for change in args.changes:
+            if "=" not in change:
+                raise TransactionError("Invalid feature change request.")
+            feature_id, action = change.split("=", 1)
+            if feature_id not in catalog or action not in ("install", "remove"):
+                raise TransactionError("The requested feature change is not allowlisted.")
+            parsed.append((feature_id, action))
+
+        if PACMAN_LOCK.exists():
+            raise TransactionError(
+                "The package manager is busy. Close other software installers and try again.",
+                exit_code=75)
+
+        requested_installs = {feature_id for feature_id, action in parsed
+                              if action == "install"}
+        for feature_id, action in parsed:
+            if action != "install":
+                continue
+            feature = catalog[feature_id]
+            for dependency_id in feature.get("dependencies", []):
+                dependency = catalog.get(dependency_id)
+                if dependency is None:
+                    raise TransactionError(
+                        f"Feature {feature_id} has an unknown dependency {dependency_id}.")
+                if (dependency_id not in requested_installs
+                        and not feature_installed(dependency)):
+                    raise TransactionError(
+                        f"{feature['name']} requires {dependency['name']}. Select both features and try again.")
+            for conflict_id in feature.get("conflicts", []):
+                conflict = catalog.get(conflict_id)
+                if conflict and (conflict_id in requested_installs
+                                 or feature_installed(conflict)):
+                    raise TransactionError(
+                        f"{feature['name']} conflicts with {conflict['name']}.")
+
+        emit("preparing", "Preparing requested feature changes…", percent=2)
+        total = len(parsed)
+        for index, (feature_id, action) in enumerate(parsed):
+            progress_start = 5 + index * 90 // total
+            progress_end = 5 + (index + 1) * 90 // total
+            progress_span = progress_end - progress_start
+            verb = "Installing" if action == "install" else "Removing"
+            emit("starting", f"{verb} {catalog[feature_id]['name']}…",
+                 feature_id, progress_start)
+            try:
+                if action == "install":
+                    install_feature(feature_id, catalog[feature_id], user,
+                                    progress_start, progress_span)
+                else:
+                    remove_feature(feature_id, catalog[feature_id], catalog, user,
+                                   progress_start, progress_span)
+                feature = catalog[feature_id]
+                log(action, feature_id, "success",
+                    packages=feature_packages(feature),
+                    reboot_required=bool(feature.get("rebootRequired", False)),
+                    logout_required=bool(feature.get("logoutRequired", False)))
+            except TransactionError as exc:
+                feature = catalog[feature_id]
+                log(action, feature_id, "failed", exc.detail,
+                    packages=feature_packages(feature),
+                    reboot_required=bool(feature.get("rebootRequired", False)),
+                    logout_required=bool(feature.get("logoutRequired", False)))
+                raise
+        emit("complete", "The requested Aero7 features were updated successfully.", percent=100)
+        return 0
+    except TransactionError as exc:
+        emit("failed", exc.public_message, detail=exc.detail)
+        return exc.exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

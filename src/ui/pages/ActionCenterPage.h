@@ -30,6 +30,7 @@ public:
 
 signals:
     void navigateRequested(PageId page);
+    void optionalFeatureRequested(const QString &featureId, PageId installedPage);
 
 private:
     // Live facts backing the Security rows, gathered once in the constructor.
@@ -40,6 +41,7 @@ private:
         bool    uacOn      = false;   // a polkit authority is on the bus
         bool    networkUp  = false;
         bool    backupConfigured = false;
+        bool    backupFeaturePresent = false;
         int     failedServices = 0;
         int     updatesAvailable = -1; // -1 means no supported package query
         bool    diskLow = false;

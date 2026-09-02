@@ -520,7 +520,8 @@ QList<SidebarLink> ProgramsFeaturesPage::sidebarLinks()
 {
     return {
         Nav::to("View installed updates", PageId::InstalledUpdates),
-        Nav::disabled("Turn Linux features on or off"),
+        Nav::command("Turn Aero7 features on or off",
+                     {QStringLiteral("aero7-optional-features")}),
     };
 }
 

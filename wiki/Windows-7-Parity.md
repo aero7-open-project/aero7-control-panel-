@@ -21,13 +21,16 @@ PipeWire, UPower, power-profiles-daemon, CUPS and Plasma configuration.
 - Device Manager launches the standalone Aero7 Device Manager.
 - Devices and Printers uses CUPS, Bluetooth and detected Linux hardware.
 
-## Honest partial or unavailable equivalents
+## Optional and unavailable equivalents
 
-Backup and Restore, credential storage, HomeGroup/SMB sharing, location
-permissions, parental controls, modem properties, Recovery, RemoteApp, speech
-recognition, Sync Center, CardSpace and Windows Defender do not yet have full
-supported Aero7 backends. Their related hubs remain available, but Aero7 does
-not display switches that falsely claim an unavailable service is active.
+Backup and Restore, HomeGroup/SMB sharing, Parental Controls, Recovery,
+RemoteApp, Sync Center, Windows Defender, advanced accessibility, modem support
+and color management use the shared Aero7 Optional Features system. Their
+Control Panel entries stay discoverable and provide a feature-required page
+when the backend is absent. Speech Recognition remains unavailable until a
+supported recognition backend exists, and CardSpace remains a non-installable
+legacy entry. Credential storage and location permissions are still honest
+partial equivalents.
 
 The complete 45-row backend and limitation matrix is maintained in
 [`docs/WINDOWS-7-CONTROL-PANEL-PARITY.md`](https://github.com/aero7-open-project/aero7-control-panel-/blob/beta/docs/WINDOWS-7-CONTROL-PANEL-PARITY.md).

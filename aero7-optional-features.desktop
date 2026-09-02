@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Aero7 Optional Features
+GenericName=Turn Aero7 features on or off
+Comment=Install or remove optional Aero7 system features
+Exec=aero7-optional-features
+Icon=system-software-install
+Categories=Settings;System;
+NoDisplay=true

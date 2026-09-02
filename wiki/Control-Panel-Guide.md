@@ -67,9 +67,23 @@ disabled rather than opening an unrelated page.
 
 ### Backup and Restore
 
-Backup and Restore is catalog-backed and exposes the installed backup tools.
-Control Panel does not claim that a backup exists unless a supported backup
-backend is present and configured.
+Backup and Restore is an optional Aero7 feature backed by Déjà Dup. When it is
+absent, Control Panel offers direct installation instead of opening an empty
+page. Control Panel does not claim that a backup exists unless the backend is
+installed and configured.
+
+### Aero7 Optional Features
+
+Open **Programs and Features > Turn Aero7 features on or off** to launch the
+separate Optional Features application. Checked, unchecked, partial, disabled
+and restart-required states come from real package, service, hardware and
+restart-marker checks.
+
+Before a change, Aero7 lists the affected features, required packages,
+approximate size and any sign-out or restart requirement. Installation and
+removal require administrator approval. Progress covers repository checks,
+download/install, configuration and final verification. Aero7 never restarts
+automatically, and removing a feature keeps user configuration and data.
 
 ## Network and Internet
 
@@ -132,8 +146,9 @@ individual KDE modules.
   through authenticated Linux account tools.
 - Removing an account preserves its home folder.
 
-Parental Controls is disabled because Aero7 currently ships no supported
-parental-control service.
+Parental Controls is an optional Aero7 feature backed by `malcontent`. If it is
+not installed, the applet shows a direct **Install Parental Controls** action
+and a link that opens Optional Features with the correct item selected.
 
 ## Appearance and Personalization
 
@@ -171,7 +186,9 @@ hubs. It is not inserted above the main Control Panel home categories.
 
 - Generic **Organize** menus without page-specific commands.
 - Help links whose Aero7 article has not been written.
-- Parental Controls until a maintained service is selected.
+- Speech Recognition, because no supported recognition backend is currently
+  available from the configured official repositories.
+- Windows CardSpace, because it is discontinued and has no Aero7 equivalent.
 
 Unavailable controls are grey and include an explanation. Report an enabled
 control that does nothing as a bug.

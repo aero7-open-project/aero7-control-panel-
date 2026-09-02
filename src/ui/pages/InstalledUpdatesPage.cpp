@@ -102,7 +102,8 @@ QList<SidebarLink> InstalledUpdatesPage::sidebarLinks()
     return {
         Nav::home("Control Panel Home"),
         Nav::to("Uninstall a program", PageId::ProgramsFeatures),
-        Nav::disabled("Turn Linux features on or off"),
+        Nav::command("Turn Aero7 features on or off",
+                     {QStringLiteral("aero7-optional-features")}),
     };
 }
 

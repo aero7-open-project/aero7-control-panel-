@@ -32,3 +32,7 @@ inline const QStringList kComputerManagementCmd = {
 inline const QStringList kProgramsCenterCmd = {
     QStringLiteral("aero7-programs-center")
 };
+
+inline const QStringList kOptionalFeaturesCmd = {
+    QStringLiteral("aero7-optional-features")
+};

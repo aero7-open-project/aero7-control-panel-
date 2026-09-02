@@ -53,6 +53,7 @@ enum class PageId {
     FolderOptions,
     AutoPlay,
     BackupRestore,
+    ParentalControls,
 };
 
 // Where a sidebar link goes when it is clicked. A link can navigate to another

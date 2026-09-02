@@ -32,6 +32,11 @@ public:
     // Start-menu Settings search. Returns false for an unknown key.
     bool openSetting(const QString &key);
 
+    // Opens an installed feature's page, or the in-Control-Panel feature-
+    // required surface when its backend is absent.
+    void openOptionalFeature(const QString &featureId);
+    void openOptionalFeature(const QString &featureId, PageId installedPage);
+
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -100,6 +105,9 @@ private:
     // Maps task/title labels to an in-app applet id opened as a modal dialog
     // (e.g. "datetime"). See openApplet.
     QHash<QObject *, QString> m_appletLinks;
+
+    QHash<QObject *, QString> m_featureLinks;
+    QHash<QObject *, int> m_featureFallbackPages;
 
     // Maps intermediate crumb labels to their navigation paths.
     QHash<QObject *, QString> m_crumbNavLinks;

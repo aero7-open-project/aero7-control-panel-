@@ -15,6 +15,7 @@
 #include "MainWindow.h"
 #include "IconHelper.h"
 #include "SettingsCatalog.h"
+#include "FeatureCatalog.h"
 #include <Aero7Qt/stylesheet.h>
 
 // Aero7Qt's application stylesheet skins QScrollBar with the Aero look. We want
@@ -114,6 +115,26 @@ static void printSettingsCatalog()
                  .join(QLatin1Char(' '))},
         });
     }
+    const FeatureCatalog features = FeatureCatalog::load();
+    for (const FeatureDefinition &feature : features.features()) {
+        if (!feature.visibleInOptionalFeatures
+            || feature.availabilityMode == QLatin1String("core"))
+            continue;
+        const FeatureStatus status = features.status(feature);
+        const QString state = FeatureCatalog::stateName(status.state);
+        catalog.append(QJsonObject{
+            {QStringLiteral("key"), QStringLiteral("optional-feature:") + feature.id},
+            {QStringLiteral("name"), feature.name},
+            {QStringLiteral("description"),
+             feature.description + QStringLiteral(" Optional feature — ") + state + QLatin1Char('.')},
+            {QStringLiteral("icon"), QStringLiteral("system-software-install")},
+            {QStringLiteral("section"), feature.category},
+            {QStringLiteral("keywords"),
+             QStringLiteral("optional feature install remove ") + feature.id},
+            {QStringLiteral("optionalFeature"), feature.id},
+            {QStringLiteral("featureState"), state},
+        });
+    }
     QTextStream(stdout) << QJsonDocument(catalog).toJson(QJsonDocument::Compact)
                         << Qt::endl;
 }
@@ -173,9 +194,22 @@ int main(int argc, char *argv[]) {
     }
 
     const QString requestedSetting = parser.value(settingOption);
-    const SettingDefinition *setting = requestedSetting.isEmpty()
+    const bool optionalSetting = requestedSetting.startsWith(
+        QStringLiteral("optional-feature:"));
+    const QString optionalFeatureId = optionalSetting
+        ? requestedSetting.mid(QStringLiteral("optional-feature:").size()) : QString();
+    const SettingDefinition *setting = requestedSetting.isEmpty() || optionalSetting
         ? nullptr : SettingsCatalog::findByKey(requestedSetting);
-    if (!requestedSetting.isEmpty() && !setting) {
+    if (optionalSetting) {
+        const FeatureCatalog features = FeatureCatalog::load();
+        const FeatureDefinition *feature = features.find(optionalFeatureId);
+        if (!feature || !feature->visibleInOptionalFeatures) {
+            QTextStream(stderr) << "Unknown Aero7 optional feature: "
+                                << optionalFeatureId << Qt::endl;
+            return 2;
+        }
+    }
+    if (!requestedSetting.isEmpty() && !setting && !optionalSetting) {
         QTextStream(stderr) << "Unknown Aero7 setting: " << requestedSetting
                             << Qt::endl;
         return 2;
@@ -212,12 +246,42 @@ int main(int argc, char *argv[]) {
     } else if (requestedPage.compare(QStringLiteral("security-maintenance"),
                                      Qt::CaseInsensitive) == 0) {
         w.openPage(PageId::SecurityMaintenance);
+    } else if (requestedPage.compare(QStringLiteral("parental-controls"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openOptionalFeature(QStringLiteral("parental-controls"),
+                              PageId::ParentalControls);
+    } else if (requestedPage.compare(QStringLiteral("programs-features"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::ProgramsFeatures);
+    } else if (requestedPage.compare(QStringLiteral("installed-updates"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::InstalledUpdates);
+    } else if (requestedPage.compare(QStringLiteral("backup-restore"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openOptionalFeature(QStringLiteral("backup-restore"),
+                              PageId::BackupRestore);
+    } else if (requestedPage.compare(QStringLiteral("ease-of-access"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::EaseOfAccess);
+    } else if (requestedPage.compare(QStringLiteral("network-settings"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::NetworkSettings);
+    } else if (requestedPage.compare(QStringLiteral("network-sharing"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::NetworkSharing);
+    } else if (requestedPage.compare(QStringLiteral("personalization"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::Personalization);
     } else if (requestedPage.compare(QStringLiteral("storage-administration"),
                                      Qt::CaseInsensitive) == 0) {
         w.openPage(PageId::StorageAdministration);
     }
     w.show();
-    if (setting) {
+    if (optionalSetting) {
+        QTimer::singleShot(0, &w, [&w, optionalFeatureId]() {
+            w.openOptionalFeature(optionalFeatureId);
+        });
+    } else if (setting) {
         const QString settingKey = setting->key;
         QTimer::singleShot(0, &w, [&w, settingKey]() {
             w.openSetting(settingKey);

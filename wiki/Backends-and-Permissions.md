@@ -9,6 +9,7 @@ owns each kind of change and when administrator approval is expected.
 | Area | Backend | What Control Panel uses it for |
 | --- | --- | --- |
 | Packages and updates | `pacman` | Update checks, updates, installed programs, removal, repair, and history |
+| Optional features | Shared feature catalog, `pacman`, systemd and Polkit | Real availability/state checks and allowlisted install, repair and removal |
 | Privileged actions | `pkexec` / polkit | Narrow authenticated system changes |
 | Firewall | `ufw` and `iptables` | State, rules, logging, enable/disable, reset, and backend health probing |
 | Networking | NetworkManager / `nmcli` | Live status, saved connections, activation, addresses, gateways, and diagnostics |
@@ -26,6 +27,7 @@ Approval is expected for changes that affect the whole system or another user,
 including:
 
 - installing updates or removing/repairing packages;
+- installing, repairing or removing an Aero7 optional feature;
 - enabling, disabling, resetting, or changing firewall rules;
 - changing the computer name, clock, or system time zone;
 - creating or removing users, changing account type, or changing another
@@ -59,10 +61,18 @@ troubleshooting terms even if Aero7 uses friendlier public wording.
 
 ## Optional and hardware-dependent modules
 
-Touchpad, touchscreen, drawing-tablet, game-controller, Bluetooth, mobile
-power, printer, and similar settings depend on detected hardware and installed
-components. Their absence does not mean the entire Control Panel installation
-is broken.
+Specialized Aero7 capabilities are managed by the standalone **Aero7 Optional
+Features** application. It consumes the same signed/static feature catalog as
+Control Panel, accepts feature IDs rather than arbitrary package names, and
+queries the real package and service state. Parental Controls, backups,
+Btrfs-based recovery, advanced accessibility, Sync Center, Aero7 Defender,
+Remote Desktop, SMB sharing, modem support and color management remain outside
+the focused base package set.
+
+Hardware-specific entries such as modem support report **Hardware not
+present**, not a generic failure. Features unavailable for this Aero7 version
+are disabled with an explanation. Speech Recognition is currently unavailable
+because speech synthesis is not misrepresented as recognition.
 
 The wallet integration is intentionally not installed by Aero7. NetworkManager
 remains usable without making a desktop wallet part of the default system.

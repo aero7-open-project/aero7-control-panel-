@@ -7,7 +7,7 @@ const QList<DetailGroup> &programsGroups()
             "application-vnd.debian.binary-package", "Programs and Features",
             {
                 { "Uninstall a program",
-                  "Turn Linux features on or off",
+                  "Turn Aero7 features on or off",
                   "View installed updates" },
                 { "Run programs made for previous versions of Linux",
                   "How to install a program" },

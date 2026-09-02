@@ -64,6 +64,11 @@ Current functionality includes:
 - Windows Update-style page backed by real `pacman` update checks
 - Installed update history read from `pacman.log`
 - Programs and Features package listing and removal
+- Standalone **Aero7 Optional Features** manager with real package/service
+  detection, Polkit authorization, install/remove/repair flows, dependency
+  explanations, progress, verification, recovery choices and audit logs
+- Feature-required pages for optional Control Panel applets, with direct
+  installation and automatic reload after a successful install
 - Network and Sharing Center with live NetworkManager status, connection
   activation and diagnostics
 - Firewall status, enable/disable, allow-rule and reset controls through `ufw`
@@ -75,6 +80,23 @@ Current functionality includes:
   Aero7 gadget gallery
 
 Aero7-specific pages and integrations will be added as development continues.
+
+### Optional features
+
+Open **Programs and Features > Turn Aero7 features on or off** to launch the
+separate `aero7-optional-features` application. Its check boxes are derived
+from actual pacman package and systemd service state; they are not stored as a
+second settings database. Optional backends such as Parental Controls, Backup
+and Restore, System Recovery, advanced accessibility, Sync Center, Aero7
+Defender, Remote Desktop, SMB sharing, modem support and color management are
+not forced onto the base installation.
+
+Selecting an absent optional applet in Control Panel opens a feature-required
+page instead of a broken page or KDE System Settings. Installation uses a
+fixed, catalog-allowlisted helper through Polkit and the configured signed Arch
+and Aero7 repositories. Removal retains user data and configuration. Speech
+Recognition and legacy CardSpace remain honestly unavailable because Aero7
+does not ship fake equivalents.
 
 ### Getting Started
 
@@ -126,7 +148,7 @@ Aero7 desktop.
 
 | Tool | Purpose |
 | --- | --- |
-| `pkexec` | Privileged package-management actions |
+| `pkexec` | Privileged package-management and Optional Features actions |
 | `pacman` | Updates, installed packages, and package removal |
 | `ufw` | Firewall status and rules |
 | `nmcli` | NetworkManager connections and diagnostics |

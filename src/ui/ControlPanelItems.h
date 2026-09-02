@@ -14,6 +14,7 @@ struct ControlPanelItem {
     QString kdeName;
     QString iconName;
     LinkTarget target;
+    QString optionalFeature;
 };
 
 const QList<ControlPanelItem> &controlPanelItems();

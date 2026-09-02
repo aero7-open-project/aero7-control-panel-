@@ -15,6 +15,7 @@ not pretend to be working controls.
 | System | Experience rating | Opens Performance Information and Tools |
 | Windows Update | Check/install updates | Uses the existing Aero7 `pacman` update workflow |
 | Programs and Features | Uninstall/repair | Uses the existing package-management workflow and confirmations |
+| Programs and Features | Turn Aero7 features on or off | Launches the separate catalog-driven `aero7-optional-features` application |
 | Installed Updates | Installed update list | Reads package history; it no longer claims a single historical update can be uninstalled safely |
 | Network and Sharing Center | Status, connect and diagnostics | Reads live NetworkManager data, activates saved connections with `nmcli`, and shows address, gateway and routing diagnostics; the advanced editor remains available separately |
 | Firewall | Turn on/off | Runs the corresponding `ufw` command through polkit; mutation controls are disabled with a restart-required explanation when an updated kernel has left the running firewall backend stale |
@@ -34,6 +35,7 @@ not pretend to be working controls.
 | Performance | Rate/rerun/details | Uses the existing Aero7 benchmark workflow |
 | Fonts | Font list/preview | Uses the installed font database and `kfontview` |
 | Ease of Access | Accessibility tasks | Uses truthfully named configuration links for magnifier, screen reader, virtual keyboard, contrast and input |
+| Optional applet placeholder | Install/Open Optional Features | Detects the real package/service state, starts the allowlisted Polkit install flow directly, or focuses the feature in the standalone manager |
 
 ## Catalog-backed settings
 
@@ -66,8 +68,9 @@ exists:
 - generic **Organize** command-bar menus that do not yet have page-specific
   commands;
 - help-article links whose Aero7 documentation page has not been written;
-- Parental Controls, because Aero7 does not currently ship a supported parental
-  control service.
+- Speech Recognition, because no supported recognition backend is available
+  from the configured official repositories;
+- Windows CardSpace, because it is discontinued and has no Aero7 equivalent.
 
 These controls are grey and explain their state in a tooltip. They should not
 be changed back into blue decorative links.

@@ -42,6 +42,7 @@
 #include "PageRegistry.h"
 #include "ControlPanelItems.h"
 #include "SettingsCatalog.h"
+#include "FeatureCatalog.h"
 #include "SettingsHubPage.h"
 #include "Commands.h"
 #include "pages/LinuxUpdatePage.h"
@@ -51,6 +52,8 @@
 #include "pages/NetworkSharingPage.h"
 #include "pages/FirewallPage.h"
 #include "pages/ActionCenterPage.h"
+#include "pages/FeatureRequiredPage.h"
+#include "pages/ParentalControlsPage.h"
 #include "pages/PowerOptionsPage.h"
 #include "pages/PerformancePage.h"
 #include "dialogs/SoundDialog.h"
@@ -289,6 +292,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
                 || m_subpageLinks.contains(watched)
                 || m_commandLinks.contains(watched)
                 || m_appletLinks.contains(watched)
+                || m_featureLinks.contains(watched)
                 || m_crumbNavLinks.contains(watched))
             {
                 QFont font = label->font();
@@ -371,6 +375,17 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
                     Qt::QueuedConnection);
                 return true;
             }
+            auto featureIt = m_featureLinks.constFind(watched);
+            if (featureIt != m_featureLinks.constEnd()) {
+                const QString id = featureIt.value();
+                const PageId fallback = static_cast<PageId>(
+                    m_featureFallbackPages.value(
+                        watched, static_cast<int>(PageId::Home)));
+                QMetaObject::invokeMethod(this,
+                    [this, id, fallback]() { openOptionalFeature(id, fallback); },
+                    Qt::QueuedConnection);
+                return true;
+            }
             auto navIt = m_navLinks.constFind(watched);
             if (navIt != m_navLinks.constEnd()) {
                 const QString path = navIt.value();
@@ -422,6 +437,7 @@ static const QString kPerformancePath      = PageRegistry::pathFor(PageId::Perfo
 static const QString kPersonalizationPath  = PageRegistry::pathFor(PageId::Personalization);
 static const QString kFontsPath            = PageRegistry::pathFor(PageId::Fonts);
 static const QString kUserAccountsPath     = PageRegistry::pathFor(PageId::UserAccounts);
+static const QString kParentalControlsPath = PageRegistry::pathFor(PageId::ParentalControls);
 static const QString kEaseOfAccessPath     = PageRegistry::pathFor(PageId::EaseOfAccess);
 static const QString kDevicesPrintersPath  = PageRegistry::pathFor(PageId::DevicesPrinters);
 
@@ -429,7 +445,52 @@ static const QString kDevicesPrintersPath  = PageRegistry::pathFor(PageId::Devic
 // render it. Category-level paths are validated separately via detailGroupsFor.
 static bool isRoutableSubPath(const QString &path)
 {
-    return PageRegistry::idForPath(path) != PageId::None;
+    return PageRegistry::idForPath(path) != PageId::None
+        || path.startsWith(QStringLiteral("All Control Panel Items/Optional Feature/"));
+}
+
+void MainWindow::openOptionalFeature(const QString &featureId, PageId installedPage)
+{
+    const FeatureCatalog catalog = FeatureCatalog::load();
+    const FeatureDefinition *feature = catalog.find(featureId);
+    if (feature && FeatureCatalog::isEnabled(catalog.status(*feature).state)) {
+        if (!feature->launch.isEmpty()
+            && feature->launch.first() != QLatin1String("control")) {
+            QProcess::startDetached(feature->launch.first(), feature->launch.mid(1));
+        } else {
+            openPage(installedPage);
+        }
+        return;
+    }
+    navigateTo(QStringLiteral("All Control Panel Items/Optional Feature/") + featureId);
+}
+
+void MainWindow::openOptionalFeature(const QString &featureId)
+{
+    PageId installedPage = PageId::Home;
+    for (const ControlPanelItem &item : controlPanelItems()) {
+        if (item.optionalFeature == featureId) {
+            installedPage = item.target.page;
+            break;
+        }
+    }
+    if (installedPage == PageId::Home) {
+        const FeatureCatalog catalog = FeatureCatalog::load();
+        const FeatureDefinition *feature = catalog.find(featureId);
+        const QHash<QString, PageId> routes{
+            {QStringLiteral("getting-started"), PageId::GettingStarted},
+            {QStringLiteral("backup-restore"), PageId::BackupRestore},
+            {QStringLiteral("ease-of-access"), PageId::EaseOfAccess},
+            {QStringLiteral("network-settings"), PageId::NetworkSettings},
+            {QStringLiteral("network-sharing"), PageId::NetworkSharing},
+            {QStringLiteral("security-maintenance"), PageId::SecurityMaintenance},
+            {QStringLiteral("personalization"), PageId::Personalization},
+            {QStringLiteral("parental-controls"), PageId::ParentalControls},
+        };
+        if (feature)
+            installedPage = routes.value(feature->route, PageId::Home);
+    }
+    openOptionalFeature(featureId, installedPage);
 }
 
 void MainWindow::navigateHome()
@@ -536,6 +597,8 @@ void MainWindow::showEntry(const QString &entry)
     m_subpageLinks.clear();
     m_commandLinks.clear();
     m_appletLinks.clear();
+    m_featureLinks.clear();
+    m_featureFallbackPages.clear();
     m_crumbNavLinks.clear();
     m_sidebarTextEffect  = nullptr;
     m_updatePage         = nullptr;
@@ -548,7 +611,54 @@ void MainWindow::showEntry(const QString &entry)
         // Sub-page path: "Category/SubPage[/SubView]"
         QStringList parts = entry.split('/');
         setCrumbTrail(parts);
-        if (entry == kGettingStartedPath) {
+        if (entry.startsWith(QStringLiteral("All Control Panel Items/Optional Feature/"))) {
+            const QString featureId = entry.section(QLatin1Char('/'), -1);
+            const FeatureCatalog catalog = FeatureCatalog::load();
+            const FeatureDefinition *feature = catalog.find(featureId);
+            if (!feature) {
+                auto *error = new QLabel(tr("This optional feature is not defined."));
+                error->setAlignment(Qt::AlignCenter);
+                m_scroll->setWidget(error);
+            } else {
+                const FeatureStatus status = catalog.status(*feature);
+                auto *required = new FeatureRequiredPage(*feature, status);
+                PageId fallback = PageId::Home;
+                for (const ControlPanelItem &item : controlPanelItems()) {
+                    if (item.optionalFeature == featureId) {
+                        fallback = item.target.page;
+                        break;
+                    }
+                }
+                QObject::connect(required,
+                    &FeatureRequiredPage::optionalFeaturesRequested,
+                    this, [](const QString &id) {
+                        QProcess::startDetached(
+                            QStringLiteral("aero7-optional-features"),
+                            {QStringLiteral("--feature"), id});
+                    });
+                QObject::connect(required, &FeatureRequiredPage::installRequested,
+                    this, [this, required, entry, fallback](const QString &id) {
+                        auto *installer = new QProcess(required);
+                        required->setWaitingForInstaller(true);
+                        QObject::connect(installer,
+                            qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
+                            this, [this, entry, fallback, id](int, QProcess::ExitStatus) {
+                                const FeatureCatalog refreshed = FeatureCatalog::load();
+                                if (FeatureCatalog::isEnabled(
+                                        refreshed.status(id, false).state)) {
+                                    openOptionalFeature(id, fallback);
+                                } else {
+                                    showEntry(entry);
+                                }
+                            });
+                        installer->start(QStringLiteral("aero7-optional-features"),
+                                         {QStringLiteral("--install"), id});
+                    });
+                QObject::connect(required, &FeatureRequiredPage::cancelRequested,
+                                 this, &MainWindow::goBack);
+                m_scroll->setWidget(required);
+            }
+        } else if (entry == kGettingStartedPath) {
             auto *gettingStarted = new GettingStartedPage;
             QObject::connect(gettingStarted, &GettingStartedPage::navigateRequested,
                              this, [this](PageId id) {
@@ -631,6 +741,10 @@ void MainWindow::showEntry(const QString &entry)
                              this, [this](PageId id) {
                                  navigateTo(PageRegistry::pathFor(id));
                              }, Qt::QueuedConnection);
+            QObject::connect(action, &ActionCenterPage::optionalFeatureRequested,
+                             this, [this](const QString &id, PageId page) {
+                                 openOptionalFeature(id, page);
+                             }, Qt::QueuedConnection);
             m_scroll->setWidget(action);
         } else if (entry == kPowerOptionsPath) {
             auto *sidebar = buildSubpageSidebar(
@@ -668,6 +782,11 @@ void MainWindow::showEntry(const QString &entry)
                              this, [this, entry]() { showEntry(entry); },
                              Qt::QueuedConnection);
             m_scroll->setWidget(users);
+        } else if (entry == kParentalControlsPath) {
+            auto *sidebar = buildSubpageSidebar({
+                Nav::to(tr("User Accounts"), PageId::UserAccounts),
+            });
+            m_scroll->setWidget(new ParentalControlsPage(sidebar));
         } else if (entry == kEaseOfAccessPath) {
             auto *sidebar = buildSubpageSidebar(
                 EaseOfAccessPage::sidebarLinks(),
@@ -930,7 +1049,21 @@ QWidget *MainWindow::buildHomePage()
                 "QLabel { color: #087f23; background: transparent; }"
                 "QLabel:hover { color: #005c16; text-decoration: underline; }");
             label->installEventFilter(this);
-            registerLinkTarget(label, setting.target);
+            if (!setting.optionalFeature.isEmpty()) {
+                m_featureLinks.insert(label, setting.optionalFeature);
+                m_featureFallbackPages.insert(
+                    label, static_cast<int>(setting.target.page));
+                const FeatureCatalog catalog = FeatureCatalog::load();
+                const FeatureStatus status = catalog.status(
+                    setting.optionalFeature, false);
+                if (!FeatureCatalog::isEnabled(status.state)) {
+                    label->setToolTip(
+                        label->toolTip() + QStringLiteral("\nOptional feature — ")
+                        + FeatureCatalog::stateName(status.state));
+                }
+            } else {
+                registerLinkTarget(label, setting.target);
+            }
             h->addWidget(label, 1, Qt::AlignVCenter);
             // Windows 7 lays its alphabetic list across each five-item row.
             grid->addWidget(cell, i / columns, i % columns);
@@ -1120,6 +1253,55 @@ QWidget *MainWindow::buildSearchResultsPage(const QString &query)
         layout->addWidget(row);
     }
 
+    const FeatureCatalog featureCatalog = FeatureCatalog::load();
+    for (const FeatureDefinition &feature : featureCatalog.features()) {
+        if (!feature.visibleInOptionalFeatures
+            || feature.availabilityMode == QLatin1String("core"))
+            continue;
+        const QString haystack = feature.name + QLatin1Char(' ')
+            + feature.description + QLatin1Char(' ') + feature.category
+            + QStringLiteral(" optional feature install remove ") + feature.id;
+        if (!haystack.contains(needle, Qt::CaseInsensitive))
+            continue;
+
+        foundAny = true;
+        auto *row = new QWidget;
+        row->setStyleSheet(QStringLiteral("background: transparent;"));
+        auto *rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(8, 4, 8, 4);
+        rowLayout->setSpacing(14);
+        auto *icon = new QLabel;
+        icon->setPixmap(resolveIcon(QStringLiteral("system-software-install")).pixmap(32, 32));
+        icon->setFixedSize(32, 32);
+        rowLayout->addWidget(icon, 0, Qt::AlignTop);
+        auto *text = new QVBoxLayout;
+        text->setContentsMargins(0, 0, 0, 0);
+        text->setSpacing(1);
+        auto *link = new QLabel(feature.name);
+        link->setObjectName(QStringLiteral("search-result-optional-") + feature.id);
+        link->setCursor(Qt::PointingHandCursor);
+        link->setStyleSheet(
+            "QLabel { color: #1F4E99; background: transparent; }"
+            "QLabel:hover { color: #0033AA; text-decoration: underline; }");
+        link->installEventFilter(this);
+        PageId fallback = PageId::Home;
+        for (const ControlPanelItem &item : controlPanelItems()) {
+            if (item.optionalFeature == feature.id) {
+                fallback = item.target.page;
+                break;
+            }
+        }
+        m_featureLinks.insert(link, feature.id);
+        m_featureFallbackPages.insert(link, static_cast<int>(fallback));
+        text->addWidget(link);
+        const FeatureStatus status = featureCatalog.status(feature, false);
+        text->addWidget(Win7::label(
+            feature.description + QStringLiteral("  ·  Optional feature — ")
+                + FeatureCatalog::stateName(status.state), 8, "#555555"));
+        rowLayout->addLayout(text, 1);
+        layout->addWidget(row);
+    }
+
     if (!foundAny) {
         layout->addWidget(
             Win7::label(tr("No Control Panel items match your search."),
@@ -1144,6 +1326,8 @@ void MainWindow::updateSearchResults(const QString &query)
     m_subpageLinks.clear();
     m_commandLinks.clear();
     m_appletLinks.clear();
+    m_featureLinks.clear();
+    m_featureFallbackPages.clear();
     m_crumbNavLinks.clear();
     setCrumbTrail({tr("Search Results")});
     m_scroll->setWidget(buildSearchResultsPage(query));
@@ -1407,6 +1591,8 @@ QWidget *MainWindow::buildCategoryPage(const QString &currentCategory)
             m_subpageLinks.insert(l, kPowerOptionsPath);
         else if (text == "Uninstall a program")
             m_subpageLinks.insert(l, kProgramsFeaturesPath);
+        else if (text == "Turn Aero7 features on or off")
+            m_commandLinks.insert(l, kOptionalFeaturesCmd);
         else if (text == "Add gadgets to the desktop")
             m_commandLinks.insert(l, kWidgetExplorerCmd);
         else if (text == "Get more gadgets online")

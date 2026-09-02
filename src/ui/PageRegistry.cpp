@@ -65,6 +65,8 @@ const QList<Entry> &table()
           QStringLiteral("Hardware and Sound/AutoPlay") },
         { PageId::BackupRestore,
           QStringLiteral("System and Security/Backup and Restore") },
+        { PageId::ParentalControls,
+          QStringLiteral("User Accounts and Family Safety/Parental Controls") },
     };
     return kEntries;
 }
