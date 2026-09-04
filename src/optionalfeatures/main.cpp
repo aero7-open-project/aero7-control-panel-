@@ -16,9 +16,9 @@ int main(int argc, char *argv[])
     app.setOrganizationName(QStringLiteral("aero7"));
     app.setApplicationName(QStringLiteral("optional-features"));
     app.setApplicationDisplayName(QStringLiteral("Aero7 Features"));
-    if (QFileInfo::exists(QStringLiteral("/usr/share/icons/Windows 7 Aero/index.theme")))
-        QIcon::setThemeName(QStringLiteral("Windows 7 Aero"));
-    app.setWindowIcon(themeIcon({"preferences-system", "system-software-install"}));
+    app.setWindowIcon(aero7ResourceIcon(
+        QStringLiteral(":/aero7/icons/app/aero7-optional-features.png"),
+        QStringLiteral("optional-features")));
     Aero7::applyApplicationStyle(&app);
 
     QCommandLineParser parser;

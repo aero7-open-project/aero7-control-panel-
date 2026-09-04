@@ -9,6 +9,8 @@ repository, and website remains in each project's own repository.
 
 - [Control Panel Guide](Control-Panel-Guide) — categories, native pages,
   buttons, permissions, limitations, and troubleshooting.
+- [Aero7 Optional Features](Optional-Features) — what every feature installs,
+  what it does, requirements, retained data, and availability.
 - [Complete Settings Reference](Settings-Reference) — all 71 searchable
   settings, what each setting does, its KDE Plasma name, backend, and status.
 - [Windows 7 Parity](Windows-7-Parity) — all 45 Windows 7 applets, current

@@ -199,6 +199,9 @@ int main(int argc, char **argv)
     }
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("aero7-action-center"));
+    app.setWindowIcon(aero7ResourceIcon(
+        QStringLiteral(":/aero7/icons/app/aero7-action-center.png"),
+        QStringLiteral("action-center")));
     app.setQuitOnLastWindowClosed(false);
     Aero7::applyApplicationStyle(&app);
     QSystemTrayIcon tray;

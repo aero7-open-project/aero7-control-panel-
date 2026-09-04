@@ -53,7 +53,9 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
     : QWidget(parent), m_catalog(FeatureCatalog::load())
 {
     setWindowTitle(tr("Aero7 Features"));
-    setWindowIcon(themeIcon({"preferences-system", "system-software-install"}));
+    setWindowIcon(aero7ResourceIcon(
+        QStringLiteral(":/aero7/icons/app/aero7-optional-features.png"),
+        QStringLiteral("optional-features")));
     resize(650, 520);
     setMinimumSize(560, 430);
 

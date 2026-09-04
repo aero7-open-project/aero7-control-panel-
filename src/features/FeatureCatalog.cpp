@@ -77,6 +77,17 @@ bool rebootPending(const QString &featureId)
     return QFileInfo::exists(QDir(directory).absoluteFilePath(featureId));
 }
 
+bool bundledPackageAvailable(const QString &package)
+{
+    const QString directory = qEnvironmentVariable(
+        "AERO7_FEATURE_BUNDLE_DIR",
+        QStringLiteral("/var/cache/aero7/optional-packages"));
+    const QString archive = QDir(directory).absoluteFilePath(
+        package + QStringLiteral(".pkg.tar.zst"));
+    return QFileInfo(archive).isFile()
+        && QFileInfo(archive + QStringLiteral(".sha256")).isFile();
+}
+
 } // namespace
 
 QString FeatureCatalog::catalogPath()
@@ -241,7 +252,17 @@ FeatureStatus FeatureCatalog::status(const FeatureDefinition &feature,
         result.detail = QStringLiteral("A required Aero7 package is missing. Repair the desktop package set.");
         return result;
     }
-    if (checkRepository) {
+    if (checkRepository && feature.availabilityMode == QLatin1String("bundled")) {
+        for (const QString &package : feature.packages) {
+            if (!bundledPackageAvailable(package)) {
+                result.state = FeatureState::Unavailable;
+                result.detail = QStringLiteral(
+                    "The bundled package for %1 is not available on this installation.")
+                                    .arg(package);
+                return result;
+            }
+        }
+    } else if (checkRepository) {
         QStringList repositoryPackages = feature.packages;
         repositoryPackages << feature.supportPackages;
         repositoryPackages.removeDuplicates();

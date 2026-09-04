@@ -32,6 +32,19 @@ together in a familiar Control Panel-style interface for the Aero7 desktop.
 > Aero7 Control Panel is under active development. Unsupported Windows-only
 > services are identified honestly and are not represented by fake switches.
 
+## Beta 2 integration status
+
+The Beta 2 package exposes **Turn Aero7 features on or off** in Start search,
+the Programs category, and Programs and Features. Optional packages are
+verified before every privileged transaction, and authorization is limited to
+the signed-in local Aero7 administrator. Programs Center Beta remains absent
+from a fresh installation but can be enabled, removed, repaired, and enabled
+again from the locally retained package without internet access.
+
+Control Panel also embeds its approved AeroThemePlasma icon resources so its
+45-item All Control Panel Items view and native pages keep their Aero7 identity
+when the global icon theme changes.
+
 [![Aero7 Control Panel home](docs/screenshots/control-panel-home.png)](https://github.com/memegeko/aero7-control-panel-/wiki/Screenshots)
 
 See the [Control Panel screenshot gallery](https://github.com/memegeko/aero7-control-panel-/wiki/Screenshots)
@@ -67,6 +80,8 @@ Current functionality includes:
 - Standalone **Aero7 Optional Features** manager with real package/service
   detection, Polkit authorization, install/remove/repair flows, dependency
   explanations, progress, verification, recovery choices and audit logs
+- Optional Programs Center Beta, installable from Aero7's locally retained,
+  checksum-verified package without requiring a network connection
 - Feature-required pages for optional Control Panel applets, with direct
   installation and automatic reload after a successful install
 - Network and Sharing Center with live NetworkManager status, connection
@@ -90,6 +105,9 @@ second settings database. Optional backends such as Parental Controls, Backup
 and Restore, System Recovery, advanced accessibility, Sync Center, Aero7
 Defender, Remote Desktop, SMB sharing, modem support and color management are
 not forced onto the base installation.
+
+The [complete Optional Features guide](wiki/Optional-Features.md) explains what
+every feature does, what it installs, its requirements and retained data.
 
 Selecting an absent optional applet in Control Panel opens a feature-required
 page instead of a broken page or KDE System Settings. Installation uses a

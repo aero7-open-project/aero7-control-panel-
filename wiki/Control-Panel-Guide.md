@@ -79,6 +79,11 @@ separate Optional Features application. Checked, unchecked, partial, disabled
 and restart-required states come from real package, service, hardware and
 restart-marker checks.
 
+The [Aero7 Optional Features reference](Optional-Features) explains what every
+listed feature does, the components it installs, its requirements and what is
+retained when it is removed. Programs Center Beta is an optional feature and
+is not forced onto fresh Aero7 installations.
+
 Before a change, Aero7 lists the affected features, required packages,
 approximate size and any sign-out or restart requirement. Installation and
 removal require administrator approval. Progress covers repository checks,

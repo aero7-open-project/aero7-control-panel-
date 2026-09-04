@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="/aero7/icons/app">
+    <file alias="aero7-control-panel.png">../assets/icons/app/aero7-control-panel.png</file>
+    <file alias="aero7-getting-started.png">../assets/icons/app/aero7-getting-started.png</file>
+    <file alias="aero7-action-center.png">../assets/icons/app/aero7-action-center.png</file>
+    <file alias="aero7-optional-features.png">../assets/icons/app/aero7-optional-features.png</file>
+  </qresource>
+</RCC>

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import json
+import hashlib
 import os
 import stat
 import subprocess
@@ -21,6 +22,7 @@ class FeatureHelperTest(unittest.TestCase):
         self.log = self.root / "feature.log"
         self.lock = self.root / "db.lck"
         self.reboot_dir = self.root / "reboot-required"
+        self.bundle_dir = self.root / "optional-packages"
         self.pacman = self.root / "pacman"
         self.systemctl = self.root / "systemctl"
         self._write_executable(self.pacman, """#!/usr/bin/python3
@@ -28,11 +30,14 @@ import os, pathlib, sys
 state = pathlib.Path(os.environ['FAKE_STATE'])
 args = sys.argv[1:]
 pkg = args[-1] if args else ''
-if os.environ.get('FAKE_PACMAN_FAIL') == '1' and ('--sync' in args or '--remove' in args):
+if os.environ.get('FAKE_PACMAN_FAIL') == '1' and ('--sync' in args or '--upgrade' in args or '--remove' in args):
     print('simulated transaction failure')
     sys.exit(1)
 if '-Q' in args:
     sys.exit(0 if (state / pkg).exists() else 1)
+if '-Qp' in args:
+    print(pathlib.Path(pkg).name.removesuffix('.pkg.tar.zst'), '1-1')
+    sys.exit(0)
 if '-Si' in args:
     if os.environ.get('FAKE_NETWORK_FAIL') == '1':
         print('error: failed retrieving file: Could not resolve host')
@@ -48,6 +53,10 @@ if '--print-format' in args:
 state.mkdir(exist_ok=True)
 if '--sync' in args:
     for name in args[args.index('--noconfirm') + 1:]: (state / name).touch()
+elif '--upgrade' in args:
+    for archive in args[args.index('--noconfirm') + 1:]:
+        name = pathlib.Path(archive).name.removesuffix('.pkg.tar.zst')
+        (state / name).touch()
 elif '--remove' in args:
     for name in args[args.index('--noconfirm') + 1:]: (state / name).unlink(missing_ok=True)
 sys.exit(0)
@@ -94,6 +103,7 @@ sys.exit(0)
             "AERO7_TEST_PACMAN": str(self.pacman),
             "AERO7_TEST_SYSTEMCTL": str(self.systemctl),
             "AERO7_TEST_REBOOT_DIR": str(self.reboot_dir),
+            "AERO7_TEST_BUNDLE_DIR": str(self.bundle_dir),
             "FAKE_STATE": str(self.state),
         })
         if extra_env:
@@ -127,6 +137,32 @@ sys.exit(0)
         result = self.run_helper("demo=install", extra_env={"FAKE_MISSING": "demo-pkg"})
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unavailable", result.stdout)
+
+    def test_bundled_feature_installs_offline_and_verifies_checksum(self):
+        feature = self.feature("bundled-demo", ["bundled-pkg"])
+        feature["availability"] = {"mode": "bundled"}
+        self.write_catalog([feature])
+        self.bundle_dir.mkdir()
+        archive = self.bundle_dir / "bundled-pkg.pkg.tar.zst"
+        archive.write_bytes(b"reviewed optional package")
+        Path(f"{archive}.sha256").write_text(
+            hashlib.sha256(archive.read_bytes()).hexdigest(), encoding="ascii")
+        result = self.run_helper("bundled-demo=install", extra_env={"FAKE_NETWORK_FAIL": "1"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertTrue((self.state / "bundled-pkg").exists())
+        self.assertIn("bundled optional package", result.stdout)
+
+    def test_bundled_feature_rejects_tampered_package(self):
+        feature = self.feature("bundled-demo", ["bundled-pkg"])
+        feature["availability"] = {"mode": "bundled"}
+        self.write_catalog([feature])
+        self.bundle_dir.mkdir()
+        archive = self.bundle_dir / "bundled-pkg.pkg.tar.zst"
+        archive.write_bytes(b"tampered")
+        Path(f"{archive}.sha256").write_text("0" * 64, encoding="ascii")
+        result = self.run_helper("bundled-demo=install")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("failed its integrity check", result.stdout)
 
     def test_package_manager_lock_is_clear(self):
         self.lock.touch()

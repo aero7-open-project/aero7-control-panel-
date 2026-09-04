@@ -161,7 +161,7 @@ QWidget *NetworkSharingPage::buildMapNode(const QStringList &iconNames,
         if (!icon.isNull()) break;
     }
     if (icon.isNull())
-        icon = QIcon::fromTheme(QStringLiteral("preferences-system"));
+        icon = resolveIcon(QStringLiteral("preferences-system"));
 
     auto *iconLabel = new QLabel;
     iconLabel->setFixedSize(kMapIconSize, kMapIconSize);
@@ -221,7 +221,7 @@ void NetworkSharingPage::addTask(QVBoxLayout *into, const QStringList &iconNames
         if (!icon.isNull()) break;
     }
     if (icon.isNull())
-        icon = QIcon::fromTheme(QStringLiteral("preferences-system"));
+        icon = resolveIcon(QStringLiteral("preferences-system"));
 
     auto *iconLabel = new QLabel;
     iconLabel->setFixedSize(24, 24);

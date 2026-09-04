@@ -1115,6 +1115,15 @@ QWidget *MainWindow::buildHomePage()
                     navigateTo(it.value());
                     return;
                 }
+                // This home-page task is an external administrative dialog,
+                // not a Control Panel page.  It used to fall through to the
+                // legacy settings lookup and silently do nothing.
+                if (task == QLatin1String("Turn Aero7 features on or off")
+                    || task == QLatin1String("Turn Linux features on or off")) {
+                    QProcess::startDetached(kOptionalFeaturesCmd.first(),
+                                            kOptionalFeaturesCmd.mid(1));
+                    return;
+                }
                 const LinkTarget target =
                     SettingsCatalog::targetForLegacyLabel(task);
                 switch (target.kind) {
@@ -1523,16 +1532,10 @@ QScrollArea *MainWindow::buildSubpageSidebar(const QList<SidebarLink> &links,
             addLink(sl);
     }
 
-    // Subpage sidebars are full width from the start and fade their text in.
-    auto *fadeEffect = new QGraphicsOpacityEffect(bar.textWrap);
-    bar.textWrap->setGraphicsEffect(fadeEffect);
-    fadeEffect->setOpacity(0.0);
-    auto *fadeAnim = new QPropertyAnimation(fadeEffect, "opacity", bar.clip);
-    fadeAnim->setStartValue(0.0);
-    fadeAnim->setEndValue(1.0);
-    fadeAnim->setDuration(2000);
-    fadeAnim->setEasingCurve(QEasingCurve::OutCubic);
-    QTimer::singleShot(0, bar.clip, [fadeAnim]() { fadeAnim->start(); });
+    // Windows 7 renders the task links immediately.  Delaying them behind a
+    // two-second opacity animation made short sidebars look empty on slower
+    // machines, including Programs and Features.
+    bar.textWrap->setGraphicsEffect(nullptr);
 
     return bar.clip;
 }
@@ -1591,7 +1594,8 @@ QWidget *MainWindow::buildCategoryPage(const QString &currentCategory)
             m_subpageLinks.insert(l, kPowerOptionsPath);
         else if (text == "Uninstall a program")
             m_subpageLinks.insert(l, kProgramsFeaturesPath);
-        else if (text == "Turn Aero7 features on or off")
+        else if (text == "Turn Aero7 features on or off"
+                 || text == "Turn Linux features on or off")
             m_commandLinks.insert(l, kOptionalFeaturesCmd);
         else if (text == "Add gadgets to the desktop")
             m_commandLinks.insert(l, kWidgetExplorerCmd);

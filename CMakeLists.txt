@@ -15,7 +15,11 @@ find_package(Aero7Qt REQUIRED)
 find_package(LayerShellQt REQUIRED)
 find_package(Cups REQUIRED)
 
+file(GLOB_RECURSE AERO7_PACK_ICON_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack/*.png")
+
 add_executable(controlpanel
+    resources/icons.qrc
     src/main.cpp
     src/features/FeatureCatalog.cpp
     src/ui/LinkLabel.h
@@ -68,6 +72,10 @@ add_executable(controlpanel
     src/data/EaseOfAccess.cpp
     src/data/Branding.cpp
 )
+qt_add_resources(controlpanel "aero7-control-panel-pack-icons"
+    PREFIX "/aero7/pack"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+    FILES ${AERO7_PACK_ICON_FILES})
 
 target_include_directories(controlpanel PRIVATE
     src/features
@@ -103,6 +111,7 @@ set_target_properties(controlpanel PROPERTIES
 
 install(TARGETS controlpanel RUNTIME DESTINATION bin)
 add_executable(aero7-optional-features
+    resources/icons.qrc
     src/optionalfeatures/main.cpp
     src/optionalfeatures/OptionalFeaturesWindow.cpp
     src/features/FeatureCatalog.cpp
@@ -120,7 +129,11 @@ install(PROGRAMS helpers/aero7-feature-helper
     DESTINATION lib/aero7-control-panel)
 install(FILES polkit/org.aero7.optional-features.policy
     DESTINATION share/polkit-1/actions)
-add_executable(aero7-action-center src/actioncenter/main.cpp)
+add_executable(aero7-action-center src/actioncenter/main.cpp resources/icons.qrc)
+qt_add_resources(aero7-action-center "aero7-action-center-pack-icons"
+    PREFIX "/aero7/pack"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+    FILES ${AERO7_PACK_ICON_FILES})
 target_include_directories(aero7-action-center PRIVATE src/ui)
 target_link_libraries(aero7-action-center PRIVATE
     Qt6::Widgets Qt6::DBus Qt6::Network Aero7Qt::Aero7Qt LayerShellQt::Interface)
@@ -132,6 +145,25 @@ install(FILES
     aero7-optional-features.desktop
     DESTINATION share/applications
 )
+function(aero7_install_pack_launcher public_name pack_name)
+    foreach(size IN LISTS ARGN)
+        install(FILES assets/icons/pack/${size}/${pack_name}.png
+            DESTINATION share/icons/hicolor/${size}x${size}/apps
+            RENAME ${public_name}.png)
+    endforeach()
+endfunction()
+
+aero7_install_pack_launcher(aero7-control-panel preferences-system
+    16 32 48 256)
+aero7_install_pack_launcher(aero7-getting-started help-contents
+    16 22 32 48)
+aero7_install_pack_launcher(aero7-action-center security-high
+    16 24 32 48 256)
+aero7_install_pack_launcher(aero7-optional-features system-software-install
+    16 32 48 256)
+install(FILES assets/icons/LICENSES.md assets/icons/pack/UPSTREAM-LICENSE
+    assets/icons/pack/UPSTREAM-README.md docs/ICON-DEVELOPMENT.md
+    DESTINATION share/doc/aero7-control-panel)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -141,6 +173,7 @@ if(BUILD_TESTING)
     add_executable(branding-test
         tests/BrandingTest.cpp
         src/data/Branding.cpp
+        resources/icons.qrc
     )
     target_include_directories(branding-test PRIVATE src/data)
     target_link_libraries(branding-test PRIVATE Qt6::Core Qt6::Gui)
@@ -265,4 +298,22 @@ if(BUILD_TESTING)
     set_tests_properties(default-programs-page-test PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
+
+    add_executable(icon-independence-test
+        tests/IconIndependenceTest.cpp
+        resources/icons.qrc
+    )
+    qt_add_resources(icon-independence-test "aero7-control-panel-pack-icons-test"
+        PREFIX "/aero7/pack"
+        BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+        FILES ${AERO7_PACK_ICON_FILES})
+    target_include_directories(icon-independence-test PRIVATE src/ui)
+    target_link_libraries(icon-independence-test PRIVATE Qt6::Widgets)
+    add_test(NAME icon-independence-test COMMAND icon-independence-test)
+    set_tests_properties(icon-independence-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
+    add_test(NAME icon-policy-test
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_icon_policy.py)
 endif()

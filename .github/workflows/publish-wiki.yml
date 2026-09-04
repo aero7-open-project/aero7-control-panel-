@@ -1,0 +1,45 @@
+name: Publish GitHub Wiki
+
+on:
+  push:
+    branches: [beta]
+    paths:
+      - "wiki/**"
+      - ".github/workflows/publish-wiki.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aero7-control-panel-wiki
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out documentation source
+        uses: actions/checkout@v4
+
+      - name: Publish wiki pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          wiki_url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if [[ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .has_wiki)" != "true" ]]; then
+            echo "GitHub Wiki is disabled for ${GITHUB_REPOSITORY}." >&2
+            exit 1
+          fi
+          wiki_dir="$(mktemp -d)"
+          git clone "$wiki_url" "$wiki_dir"
+          find "$wiki_dir" -mindepth 1 -maxdepth 1 -type f -name '*.md' -delete
+          cp wiki/*.md "$wiki_dir"/
+          git -C "$wiki_dir" config user.name "github-actions[bot]"
+          git -C "$wiki_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$wiki_dir" add --all
+          if ! git -C "$wiki_dir" diff --cached --quiet; then
+            git -C "$wiki_dir" commit -m "docs: synchronize Control Panel wiki"
+            git -C "$wiki_dir" push origin master
+          fi

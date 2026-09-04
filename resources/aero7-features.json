@@ -20,6 +20,24 @@
       "compatibility": "Required by every Aero7 session and cannot be removed."
     },
     {
+      "id": "programs-center-beta",
+      "name": "Programs Center Beta",
+      "description": "Browse, install, remove, and update applications with Aero7's graphical software manager.",
+      "category": "Programs",
+      "packages": ["aero7-programs-center-git"],
+      "services": [],
+      "dependencies": [],
+      "conflicts": [],
+      "route": "programs-center",
+      "launch": ["aero7-programs-center"],
+      "installSizeMiB": 2,
+      "rebootRequired": false,
+      "logoutRequired": false,
+      "privilege": "admin",
+      "availability": {"mode": "bundled"},
+      "compatibility": "Optional beta software. Aero7 installs the checksum-verified package kept on the installed system, so enabling it does not require an internet connection."
+    },
+    {
       "id": "parental-controls",
       "name": "Parental Controls",
       "description": "Restrict applications and session usage for managed local accounts.",

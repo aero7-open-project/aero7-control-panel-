@@ -2,6 +2,8 @@
 """Privileged, catalog-allowlisted Aero7 optional-feature transaction helper."""
 
 import argparse
+import grp
+import hashlib
 import itertools
 import json
 import os
@@ -23,6 +25,8 @@ PACMAN_LOCK = Path(os.environ.get("AERO7_TEST_LOCK", "")) if TESTING else Path(
     "/var/lib/pacman/db.lck")
 REBOOT_MARKER_DIR = Path(os.environ.get("AERO7_TEST_REBOOT_DIR", "")) if TESTING else Path(
     "/run/aero7/optional-features-reboot")
+BUNDLE_DIR = Path(os.environ.get("AERO7_TEST_BUNDLE_DIR", "")) if TESTING else Path(
+    "/var/cache/aero7/optional-packages")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
 PKG_RE = re.compile(r"^[a-zA-Z0-9@._+:-]+$")
 
@@ -119,6 +123,37 @@ def repository_info(package):
                           check=False)
 
 
+def bundled_package(package):
+    archive = BUNDLE_DIR / f"{package}.pkg.tar.zst"
+    checksum_file = Path(f"{archive}.sha256")
+    if not archive.is_file() or not checksum_file.is_file():
+        raise TransactionError(
+            f"The bundled package for {package} is not available on this installation.")
+    try:
+        expected = checksum_file.read_text(encoding="ascii").strip().lower()
+    except OSError as exc:
+        raise TransactionError(
+            f"The bundled package for {package} could not be verified.", str(exc)) from exc
+    if not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise TransactionError(
+            f"The bundled package for {package} could not be verified.",
+            "Invalid bundled-package checksum file.")
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    if digest != expected:
+        raise TransactionError(
+            f"The bundled package for {package} failed its integrity check.",
+            f"Expected {expected}; got {digest}.")
+    identity = subprocess.run(
+        [PACMAN, "-Qp", str(archive)],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    identity_fields = identity.stdout.strip().split()
+    if identity.returncode or not identity_fields or identity_fields[0] != package:
+        raise TransactionError(
+            f"The bundled package for {package} has an invalid package identity.",
+            identity.stdout.strip() or "Package metadata could not be read.")
+    return archive
+
+
 def looks_like_network_failure(detail):
     text = detail.lower()
     return any(phrase in text for phrase in (
@@ -148,6 +183,29 @@ def resolve_user(name):
     if entry.pw_uid < 1000 or entry.pw_uid == 65534:
         raise TransactionError("Feature services can only be enabled for a desktop user.")
     return entry.pw_name
+
+
+def verify_invoker(requested_user):
+    """Bind pkexec requests to the active wheel user who started the action."""
+    if TESTING:
+        return
+    raw_uid = os.environ.get("PKEXEC_UID", "")
+    if not raw_uid:
+        # Direct root invocation remains available for recovery and maintenance.
+        if os.geteuid() == 0:
+            return
+        raise TransactionError("Administrator authorization is required.", exit_code=77)
+    if not raw_uid.isdigit():
+        raise TransactionError("The authorization request has an invalid user identity.")
+    try:
+        caller = pwd.getpwuid(int(raw_uid))
+        wheel = grp.getgrnam("wheel")
+    except KeyError as exc:
+        raise TransactionError("The authorized administrator account could not be verified.") from exc
+    if caller.pw_gid != wheel.gr_gid and caller.pw_name not in wheel.gr_mem:
+        raise TransactionError("Only a local Aero7 administrator can change optional features.")
+    if requested_user and requested_user != caller.pw_name:
+        raise TransactionError("The feature request does not match the authorized desktop user.")
 
 
 def service_name(template, user):
@@ -228,24 +286,32 @@ def install_feature(feature_id, feature, user, progress_start=5, progress_span=9
     missing = [package for package in packages if not installed(package)]
     emit("checking", "Checking package availability…", feature_id,
          progress_start + progress_span * 10 // 100)
-    for package in missing:
-        info = repository_info(package)
-        if info.returncode:
-            detail = info.stdout.strip()
-            if looks_like_network_failure(detail):
+    bundled = []
+    if mode == "bundled":
+        bundled = [str(bundled_package(package)) for package in missing]
+    else:
+        for package in missing:
+            info = repository_info(package)
+            if info.returncode:
+                detail = info.stdout.strip()
+                if looks_like_network_failure(detail):
+                    raise TransactionError(
+                        "Aero7 can't reach the package repositories. Check the network connection and try again.",
+                        detail)
                 raise TransactionError(
-                    "Aero7 can't reach the package repositories. Check the network connection and try again.",
+                    f"Required package {package} is unavailable from the configured repositories.",
                     detail)
-            raise TransactionError(
-                f"Required package {package} is unavailable from the configured repositories.",
-                detail)
     if missing:
-        run([PACMAN, "--sync", "--needed", "--noconfirm", *missing],
+        command = ([PACMAN, "--upgrade", "--needed", "--noconfirm", *bundled]
+                   if mode == "bundled"
+                   else [PACMAN, "--sync", "--needed", "--noconfirm", *missing])
+        run(command,
             "installing", feature_id,
             failure_message=(
                 "Aero7 could not install the required packages. "
                 "No feature was marked fully installed."),
-            message="Downloading and installing required packages…",
+            message=("Installing the bundled optional package…" if mode == "bundled"
+                     else "Downloading and installing required packages…"),
             percent=progress_start + progress_span * 35 // 100)
     for template in feature.get("services", []):
         unit = service_name(template, user)
@@ -323,6 +389,7 @@ def main():
         return 77
     try:
         catalog = load_catalog(CATALOG)
+        verify_invoker(args.user)
         user = resolve_user(args.user)
         parsed = []
         for change in args.changes:

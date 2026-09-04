@@ -29,7 +29,8 @@ int main(int argc, char **argv)
             std::cerr << "incomplete feature: " << feature.id.toStdString() << '\n';
             return 3;
         }
-        if (feature.availabilityMode == QStringLiteral("repository")
+        if ((feature.availabilityMode == QStringLiteral("repository")
+             || feature.availabilityMode == QStringLiteral("bundled"))
             && feature.packages.isEmpty()) {
             std::cerr << "repository feature without packages: "
                       << feature.id.toStdString() << '\n';

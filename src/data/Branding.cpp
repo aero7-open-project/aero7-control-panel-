@@ -1,4 +1,5 @@
 #include "Branding.h"
+#include "../ui/IconHelper.h"
 
 #include <QSettings>
 #include <QRegularExpression>
@@ -127,15 +128,9 @@ int copyrightYear()
 // something sensible on themes without it.
 QIcon windowsLogo()
 {
-    for (const QString &name : { QStringLiteral("distributor-logo"),
-                                 QStringLiteral("start-here"),
-                                 QStringLiteral("windows"),
-                                 QStringLiteral("computer") }) {
-        QIcon icon = QIcon::fromTheme(name);
-        if (!icon.isNull())
-            return icon;
-    }
-    return QIcon();
+    return aero7ResourceIcon(
+        QStringLiteral(":/aero7/icons/app/aero7-control-panel.png"),
+        QStringLiteral("control-panel"));
 }
 
 namespace {
