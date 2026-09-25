@@ -292,13 +292,7 @@ PersonalizationPage::PersonalizationPage(QScrollArea *sidebar, QWidget *parent)
     addAction("preferences-desktop-wallpaper", "Desktop\nBackground",
               [this]() { chooseWallpaper(); });
     addAction("preferences-desktop-color", "Window\nColor",
-              [this]() {
-                  QMessageBox::information(
-                      this, QStringLiteral("Window Color"),
-                      QStringLiteral("Choose one of the color schemes above. "
-                                     "It is applied immediately to Plasma and "
-                                     "Aero7 applications."));
-              });
+              [this]() { launchDetached(this, aeroWindowColor()); });
     addAction("preferences-desktop-sound", "Sounds",
               [this]() { emit soundRequested(); });
     addAction("preferences-desktop-screensaver", "Screen\nSaver",

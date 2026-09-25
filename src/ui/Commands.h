@@ -2,6 +2,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <QLibraryInfo>
 
 // ---------------------------------------------------------------------------
 // External launchers shared by MainWindow's task links and the detail pages'
@@ -13,6 +14,19 @@
 inline QStringList kcm(const char *module)
 {
     return { QStringLiteral("kcmshell6"), QString::fromLatin1(module) };
+}
+
+// Open AeroShell's glass-color editor, which is a KWin effect configuration
+// plugin rather than a normal kcmshell module. The loader needs both the
+// plugin path and an icon argument.
+inline QStringList aeroWindowColor()
+{
+    return {
+        QStringLiteral("aeroshell-kcmloader"),
+        QLibraryInfo::path(QLibraryInfo::PluginsPath)
+            + QStringLiteral("/kwin/effects/configs/kwin_aeroglassblur_config.so"),
+        QStringLiteral("preferences-desktop-color")
+    };
 }
 
 // Desktop Gadgets links hook into KDE Plasma's real widget panels. The

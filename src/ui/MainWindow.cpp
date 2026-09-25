@@ -1385,7 +1385,7 @@ QWidget *MainWindow::buildCategoryPage(const QString &currentCategory)
         static const QHash<QString, QStringList> taskCmd = {
             { "Mouse",                                       kcm("kcm_mouse") },
             { "Change desktop background",                   kcm("kcm_wallpaper") },
-            { "Change window glass colors",                  kcm("kcm_colors") },
+            { "Change window glass colors",                  aeroWindowColor() },
             { "Change screen saver",                         kcm("kcm_screenlocker") },
             { "Adjust screen resolution",                    kcm("kcm_kscreen") },
             { "Make text and other items larger or smaller", kcm("kcm_kscreen") },
