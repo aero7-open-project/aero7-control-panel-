@@ -13,6 +13,7 @@ class QTreeWidget;
 class QTreeWidgetItem;
 class QDialog;
 class QPlainTextEdit;
+class QCheckBox;
 
 class OptionalFeaturesWindow : public QWidget {
     Q_OBJECT
@@ -36,6 +37,8 @@ private:
 
     FeatureCatalog m_catalog;
     QTreeWidget *m_tree = nullptr;
+    QCheckBox *m_showKdeSettings = nullptr;
+    bool m_originalKdeSettingsShown = false;
     QLabel *m_description = nullptr;
     QLabel *m_compatibility = nullptr;
     QPushButton *m_ok = nullptr;

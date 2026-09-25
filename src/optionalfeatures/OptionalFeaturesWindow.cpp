@@ -3,6 +3,7 @@
 #include "IconHelper.h"
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QDateTime>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -47,6 +48,20 @@ QString actionText(const QString &change, const FeatureCatalog &catalog)
         .arg(install ? QStringLiteral("Install") : QStringLiteral("Remove"),
              feature ? feature->name : id);
 }
+
+QString systemSettingsVisibilityProgram()
+{
+    return QStringLiteral("/usr/bin/aero7-system-settings-visibility");
+}
+
+bool systemSettingsShown()
+{
+    QProcess process;
+    process.start(systemSettingsVisibilityProgram(), {QStringLiteral("status")});
+    return process.waitForFinished(3000)
+        && process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0
+        && process.readAllStandardOutput().trimmed() == QByteArray("enabled");
+}
 } // namespace
 
 OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
@@ -89,6 +104,11 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
     m_tree->setAlternatingRowColors(false);
     layout->addWidget(m_tree, 1);
 
+    m_showKdeSettings = new QCheckBox(tr("Show KDE System Settings application"));
+    m_showKdeSettings->setToolTip(tr(
+        "Off by default. Aero7 Control Panel remains available for normal settings."));
+    layout->addWidget(m_showKdeSettings);
+
     auto *detailsFrame = new QWidget;
     auto *detailsLayout = new QVBoxLayout(detailsFrame);
     detailsLayout->setContentsMargins(4, 3, 4, 3);
@@ -118,6 +138,8 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
             this, &OptionalFeaturesWindow::updateDescription);
     connect(m_tree, &QTreeWidget::itemChanged,
             this, [this]() { if (!m_populating) updateButtons(); });
+    connect(m_showKdeSettings, &QCheckBox::toggled,
+            this, [this]() { if (!m_populating) updateButtons(); });
     connect(m_ok, &QPushButton::clicked, this, &OptionalFeaturesWindow::applyChanges);
     connect(m_cancel, &QPushButton::clicked, this, &QWidget::close);
     connect(m_open, &QPushButton::clicked, this, [this]() {
@@ -139,6 +161,8 @@ void OptionalFeaturesWindow::populate()
     m_populating = true;
     m_tree->clear();
     m_initialStates.clear();
+    m_originalKdeSettingsShown = systemSettingsShown();
+    m_showKdeSettings->setChecked(m_originalKdeSettingsShown);
     QHash<QString, QTreeWidgetItem *> categories;
 
     if (!m_catalog.isValid()) {
@@ -278,7 +302,7 @@ void OptionalFeaturesWindow::updateDescription()
 
 void OptionalFeaturesWindow::updateButtons()
 {
-    bool changed = false;
+    bool changed = m_showKdeSettings->isChecked() != m_originalKdeSettingsShown;
     for (auto it = m_initialStates.cbegin(); it != m_initialStates.cend(); ++it) {
         QTreeWidgetItem *item = itemForFeature(it.key());
         if (!item || item->isDisabled())
@@ -297,6 +321,8 @@ void OptionalFeaturesWindow::updateButtons()
 void OptionalFeaturesWindow::applyChanges()
 {
     QStringList changes;
+    const bool visibilityChanged =
+        m_showKdeSettings->isChecked() != m_originalKdeSettingsShown;
     int totalSize = 0;
     bool logout = false;
     bool reboot = false;
@@ -317,7 +343,7 @@ void OptionalFeaturesWindow::applyChanges()
         logout |= feature->logoutRequired;
         reboot |= feature->rebootRequired;
     }
-    if (changes.isEmpty()) {
+    if (changes.isEmpty() && !visibilityChanged) {
         close();
         return;
     }
@@ -352,6 +378,10 @@ void OptionalFeaturesWindow::applyChanges()
     QStringList requiredPackages;
     for (const QString &change : changes)
         actions << QStringLiteral("• ") + actionText(change, m_catalog);
+    if (visibilityChanged)
+        actions << (m_showKdeSettings->isChecked()
+            ? tr("• Show KDE System Settings in applications and search")
+            : tr("• Hide KDE System Settings from applications and search"));
     for (const QString &change : changes) {
         if (!change.endsWith(QLatin1String("=install")))
             continue;
@@ -380,6 +410,25 @@ void OptionalFeaturesWindow::applyChanges()
                               QMessageBox::Ok | QMessageBox::Cancel,
                               QMessageBox::Ok) != QMessageBox::Ok)
         return;
+    if (visibilityChanged) {
+        QProcess visibility;
+        visibility.start(systemSettingsVisibilityProgram(),
+                         {m_showKdeSettings->isChecked() ? QStringLiteral("enable")
+                                                         : QStringLiteral("disable")});
+        if (!visibility.waitForFinished(35000)
+            || visibility.exitStatus() != QProcess::NormalExit || visibility.exitCode() != 0) {
+            QMessageBox::critical(this, tr("Aero7 Features"),
+                tr("KDE System Settings visibility could not be changed.\n%1")
+                    .arg(QString::fromUtf8(visibility.readAllStandardError()).trimmed()));
+            populate();
+            return;
+        }
+        m_originalKdeSettingsShown = m_showKdeSettings->isChecked();
+    }
+    if (changes.isEmpty()) {
+        close();
+        return;
+    }
     startTransaction(changes);
 }
 

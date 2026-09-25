@@ -127,6 +127,8 @@ install(FILES resources/aero7-features.json
     DESTINATION share/aero7-control-panel RENAME features.json)
 install(PROGRAMS helpers/aero7-feature-helper
     DESTINATION lib/aero7-control-panel)
+install(PROGRAMS helpers/aero7-system-settings-visibility
+    DESTINATION bin)
 install(FILES polkit/org.aero7.optional-features.policy
     DESTINATION share/polkit-1/actions)
 add_executable(aero7-action-center src/actioncenter/main.cpp resources/icons.qrc)
@@ -170,6 +172,8 @@ if(BUILD_TESTING)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_test(NAME feature-helper-test
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_feature_helper.py)
+    add_test(NAME system-settings-visibility-test
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_system_settings_visibility.py)
     add_executable(branding-test
         tests/BrandingTest.cpp
         src/data/Branding.cpp

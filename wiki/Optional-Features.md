@@ -6,6 +6,10 @@ box means the feature's real packages and required services are installed.
 Changes require administrator approval. Removing a feature does not delete its
 user-created files or settings.
 
+The **Show KDE System Settings application** switch is off by default. Turn it
+on here if you need the full KDE settings window in application menus and
+search. Aero7 Control Panel remains available either way.
+
 ## Feature reference
 
 | Feature | What it does | Components and important behavior |
