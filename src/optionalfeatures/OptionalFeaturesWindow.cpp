@@ -108,6 +108,10 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
     m_showKdeSettings->setToolTip(tr(
         "Off by default. Aero7 Control Panel remains available for normal settings."));
     layout->addWidget(m_showKdeSettings);
+    auto *kdeSettingsNote = new QLabel(tr(
+        "KDE settings components remain available to Aero7 Control Panel."));
+    kdeSettingsNote->setStyleSheet(QStringLiteral("color: #555555;"));
+    layout->addWidget(kdeSettingsNote);
 
     auto *detailsFrame = new QWidget;
     auto *detailsLayout = new QVBoxLayout(detailsFrame);
@@ -405,7 +409,8 @@ void OptionalFeaturesWindow::applyChanges()
         message += tr("\nYou may need to sign out before every component is available.");
     if (reboot)
         message += tr("\nA restart will be required, but Aero7 will not restart automatically.");
-    message += tr("\n\nRemoving a feature keeps user configuration and data.");
+    if (!changes.isEmpty())
+        message += tr("\n\nRemoving a feature keeps user configuration and data.");
     if (QMessageBox::question(this, tr("Confirm feature changes"), message,
                               QMessageBox::Ok | QMessageBox::Cancel,
                               QMessageBox::Ok) != QMessageBox::Ok)
