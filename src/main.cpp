@@ -274,7 +274,11 @@ int main(int argc, char *argv[]) {
         w.openPage(PageId::StorageAdministration);
     } else if (requestedPage.compare(QStringLiteral("window-snapping"),
                                      Qt::CaseInsensitive) == 0) {
-        w.openPage(PageId::WindowSnapping);
+        // The Aero7 glass frame rebuilds the initial view when the window is
+        // first shown. Open this optional page once that first frame exists.
+        QTimer::singleShot(0, &w, [&w]() {
+            w.openPage(PageId::WindowSnapping);
+        });
     }
     w.show();
     if (optionalSetting) {
