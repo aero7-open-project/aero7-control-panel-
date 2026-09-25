@@ -598,7 +598,9 @@ void PersonalizationPage::openWindowColor()
             QStringLiteral("The Aero7 window-color component is not installed."));
         return;
     }
-    QProcess::startDetached(loader, {module});
+    // The AeroShell loader expects a module path and an icon name.
+    QProcess::startDetached(loader,
+                            {module, QStringLiteral("preferences-desktop-color")});
 }
 
 void PersonalizationPage::configureLockScreen()
