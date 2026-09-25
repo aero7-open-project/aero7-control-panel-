@@ -148,6 +148,10 @@ const QList<SettingDefinition> &all()
              "kcm_notifications"),
 
         // Window behavior
+        page("window-snapping", "Windows Snapping", "Window Snapping",
+             PageId::WindowSnapping, SettingsSection::WindowBehavior,
+             "Adjust how easily windows snap to screen edges.",
+             "preferences-system-windows-behavior"),
         nativeEditor("window-decoration", "Window Borders", "Window Decorations", "kcm_kwindecoration", SettingsSection::WindowBehavior,
             "Choose title bars, borders and window buttons.", "preferences-system-windows"),
         nativeEditor("window-behavior", "Window Behavior", "Window Behavior", "kcm_kwinoptions", SettingsSection::WindowBehavior,

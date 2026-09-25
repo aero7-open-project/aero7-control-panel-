@@ -20,6 +20,24 @@
       "compatibility": "Required by every Aero7 session and cannot be removed."
     },
     {
+      "id": "windows-snapping",
+      "name": "Windows Snapping",
+      "description": "Snap windows to the sides or top of a screen by dragging them to an edge.",
+      "category": "Appearance and personalization",
+      "packages": [],
+      "services": [],
+      "dependencies": [],
+      "conflicts": [],
+      "route": "window-snapping",
+      "launch": ["control", "--page", "window-snapping"],
+      "installSizeMiB": 0,
+      "rebootRequired": false,
+      "logoutRequired": false,
+      "privilege": "user",
+      "availability": {"mode": "user-setting"},
+      "compatibility": "This switches Aero7 window snapping for your account. Sensitivity is adjustable in Control Panel > Window Behavior."
+    },
+    {
       "id": "programs-center-beta",
       "name": "Programs Center Beta",
       "description": "Browse, install, remove, and update applications with Aero7's graphical software manager.",

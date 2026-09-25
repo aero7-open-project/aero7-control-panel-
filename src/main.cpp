@@ -272,6 +272,9 @@ int main(int argc, char *argv[]) {
     } else if (requestedPage.compare(QStringLiteral("storage-administration"),
                                      Qt::CaseInsensitive) == 0) {
         w.openPage(PageId::StorageAdministration);
+    } else if (requestedPage.compare(QStringLiteral("window-snapping"),
+                                     Qt::CaseInsensitive) == 0) {
+        w.openPage(PageId::WindowSnapping);
     }
     w.show();
     if (optionalSetting) {

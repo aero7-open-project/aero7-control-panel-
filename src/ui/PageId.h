@@ -47,6 +47,7 @@ enum class PageId {
     InputDevices,
     StartupShutdown,
     WindowBehavior,
+    WindowSnapping,
     SecurityMaintenance,
     StorageAdministration,
     InternetOptions,

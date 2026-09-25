@@ -67,6 +67,7 @@
 #include "pages/DevicesAndPrintersPage.h"
 #include "pages/DisplayPage.h"
 #include "pages/DefaultProgramsPage.h"
+#include "pages/WindowSnappingPage.h"
 #include "dialogs/DateTimeDialog.h"
 #include "dialogs/LinverConfigDialog.h"
 
@@ -485,6 +486,7 @@ void MainWindow::openOptionalFeature(const QString &featureId)
             {QStringLiteral("network-sharing"), PageId::NetworkSharing},
             {QStringLiteral("security-maintenance"), PageId::SecurityMaintenance},
             {QStringLiteral("personalization"), PageId::Personalization},
+            {QStringLiteral("window-snapping"), PageId::WindowSnapping},
             {QStringLiteral("parental-controls"), PageId::ParentalControls},
         };
         if (feature)
@@ -532,6 +534,13 @@ bool MainWindow::openSetting(const QString &key)
 
 void MainWindow::navigateTo(const QString &path)
 {
+    if (path == PageRegistry::pathFor(PageId::WindowSnapping)) {
+        const FeatureCatalog catalog = FeatureCatalog::load();
+        if (!FeatureCatalog::isEnabled(catalog.status(QStringLiteral("windows-snapping")).state)) {
+            navigateTo(QStringLiteral("All Control Panel Items/Optional Feature/windows-snapping"));
+            return;
+        }
+    }
     if (path.contains('/')) {
         // Sub-path: if we can't render it (e.g. an intermediate crumb like
         // "Programs/Programs and Features" with no page of its own), fall back
@@ -806,6 +815,11 @@ void MainWindow::showEntry(const QString &entry)
                 auto *sidebar = buildSubpageSidebar(
                     DisplayPage::sidebarLinks(), DisplayPage::sidebarSeeAlso());
                 m_scroll->setWidget(new DisplayPage(sidebar));
+                break;
+            }
+            case PageId::WindowSnapping: {
+                auto *sidebar = buildSubpageSidebar({});
+                m_scroll->setWidget(new WindowSnappingPage(sidebar));
                 break;
             }
             case PageId::TaskbarStartMenu: {

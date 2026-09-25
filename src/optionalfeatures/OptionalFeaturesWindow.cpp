@@ -44,8 +44,10 @@ QString actionText(const QString &change, const FeatureCatalog &catalog)
     const QString id = change.section(QLatin1Char('='), 0, 0);
     const bool install = change.endsWith(QLatin1String("=install"));
     const FeatureDefinition *feature = catalog.find(id);
+    const bool userSetting = feature && feature->availabilityMode == QLatin1String("user-setting");
     return QStringLiteral("%1 %2")
-        .arg(install ? QStringLiteral("Install") : QStringLiteral("Remove"),
+        .arg(userSetting ? (install ? QStringLiteral("Turn on") : QStringLiteral("Turn off"))
+                         : (install ? QStringLiteral("Install") : QStringLiteral("Remove")),
              feature ? feature->name : id);
 }
 
@@ -197,7 +199,9 @@ void OptionalFeaturesWindow::populate()
         const FeatureStatus status = m_catalog.status(feature);
         auto *item = new QTreeWidgetItem(category);
         item->setText(0, feature.name);
-        item->setText(1, FeatureCatalog::stateName(status.state));
+        item->setText(1, feature.availabilityMode == QLatin1String("user-setting")
+            ? (FeatureCatalog::isEnabled(status.state) ? tr("On") : tr("Off"))
+            : FeatureCatalog::stateName(status.state));
         item->setText(2, feature.installSizeMiB > 0
                            ? tr("%1 MB").arg(feature.installSizeMiB)
                            : QString());
@@ -453,6 +457,26 @@ void OptionalFeaturesWindow::applyChanges()
             return;
         }
         m_originalKdeSettingsShown = showKdeSettings;
+    }
+    for (auto it = changes.begin(); it != changes.end();) {
+        const FeatureDefinition *feature = m_catalog.find(it->section('=', 0, 0));
+        if (!feature || feature->availabilityMode != QLatin1String("user-setting")) {
+            ++it;
+            continue;
+        }
+        QProcess control;
+        control.start(QStringLiteral("/usr/lib/aero7-desktop/aero7-snap-control"),
+                      {it->endsWith(QLatin1String("=install"))
+                           ? QStringLiteral("enable") : QStringLiteral("disable")});
+        if (!control.waitForFinished(10000)
+            || control.exitStatus() != QProcess::NormalExit || control.exitCode() != 0) {
+            QMessageBox::critical(this, tr("Aero7 Features"),
+                tr("Windows Snapping could not be changed.\n%1")
+                    .arg(QString::fromUtf8(control.readAllStandardError()).trimmed()));
+            populate();
+            return;
+        }
+        it = changes.erase(it);
     }
     if (changes.isEmpty()) {
         close();

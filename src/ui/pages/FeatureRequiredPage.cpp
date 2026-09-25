@@ -22,7 +22,9 @@ FeatureRequiredPage::FeatureRequiredPage(const FeatureDefinition &feature,
     outer->setSpacing(16);
 
     auto *heading = new QLabel(
-        status.state == FeatureState::Unavailable
+        feature.availabilityMode == QLatin1String("user-setting")
+            ? tr("This Aero7 feature is turned off")
+        : status.state == FeatureState::Unavailable
             ? tr("This feature is not available")
             : status.state == FeatureState::HardwareNotPresent
                 ? tr("Required hardware was not found")
@@ -81,7 +83,8 @@ FeatureRequiredPage::FeatureRequiredPage(const FeatureDefinition &feature,
     const bool installable = status.state == FeatureState::NotInstalled
                              || status.state == FeatureState::PartiallyInstalled
                              || status.state == FeatureState::Failed;
-    m_install->setVisible(installable);
+    m_install->setVisible(installable
+        && feature.availabilityMode != QLatin1String("user-setting"));
     m_openFeatures->setVisible(feature.visibleInOptionalFeatures);
     buttons->addWidget(m_install);
     buttons->addWidget(m_openFeatures);

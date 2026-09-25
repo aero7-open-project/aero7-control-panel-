@@ -53,6 +53,8 @@ const QList<Entry> &table()
           QStringLiteral("System and Security/Startup and Shutdown") },
         { PageId::WindowBehavior,
           QStringLiteral("Appearance and Personalization/Window Behavior") },
+        { PageId::WindowSnapping,
+          QStringLiteral("Appearance and Personalization/Window Behavior/Windows Snapping") },
         { PageId::SecurityMaintenance,
           QStringLiteral("System and Security/Security and Maintenance") },
         { PageId::StorageAdministration,

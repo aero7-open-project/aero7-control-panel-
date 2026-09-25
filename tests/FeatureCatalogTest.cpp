@@ -10,6 +10,7 @@
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+    qputenv("AERO7_FEATURE_CATALOG", AERO7_FEATURE_CATALOG_SOURCE);
     QString error;
     const FeatureCatalog catalog = FeatureCatalog::load(&error);
     if (!catalog.isValid()) {
@@ -46,9 +47,23 @@ int main(int argc, char **argv)
         || speech->unavailableReason.isEmpty())
         return 6;
 
+    const FeatureDefinition *snapping = catalog.find(QStringLiteral("windows-snapping"));
+    if (!snapping || snapping->availabilityMode != QStringLiteral("user-setting"))
+        return 16;
+
     QTemporaryDir temporary;
     if (!temporary.isValid())
         return 7;
+    const QString configHome = temporary.filePath(QStringLiteral("config"));
+    QDir().mkpath(configHome);
+    QFile kwinrc(QDir(configHome).filePath(QStringLiteral("kwinrc")));
+    if (!kwinrc.open(QIODevice::WriteOnly | QIODevice::Text))
+        return 17;
+    kwinrc.write("[Plugins]\naero7snapEnabled=false\n");
+    kwinrc.close();
+    qputenv("XDG_CONFIG_HOME", configHome.toUtf8());
+    if (catalog.status(*snapping).state != FeatureState::NotInstalled)
+        return 18;
     const QString pacmanPath = temporary.filePath(QStringLiteral("pacman"));
     QFile pacman(pacmanPath);
     if (!pacman.open(QIODevice::WriteOnly | QIODevice::Text))

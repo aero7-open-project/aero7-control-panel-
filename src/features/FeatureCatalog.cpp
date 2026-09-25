@@ -188,6 +188,26 @@ FeatureStatus FeatureCatalog::status(const FeatureDefinition &feature,
                                      bool checkRepository) const
 {
     FeatureStatus result;
+    if (feature.availabilityMode == QLatin1String("user-setting")) {
+        QProcess process;
+        process.start(QStringLiteral("kreadconfig6"),
+            {QStringLiteral("--file"), QStringLiteral("kwinrc"),
+             QStringLiteral("--group"), QStringLiteral("Plugins"),
+             QStringLiteral("--key"), QStringLiteral("aero7snapEnabled")});
+        const bool readable = process.waitForFinished(2500)
+            && process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0;
+        if (!readable) {
+            result.state = FeatureState::Unavailable;
+            result.detail = QStringLiteral("KWin settings could not be read.");
+            return result;
+        }
+        const QByteArray value = readable ? process.readAllStandardOutput().trimmed() : QByteArray();
+        const bool enabled = value.isEmpty() || value.toLower() == "true";
+        result.state = enabled ? FeatureState::Installed : FeatureState::NotInstalled;
+        result.detail = enabled ? QStringLiteral("Turned on")
+                                : QStringLiteral("Turned off. Open Aero7 Features to turn it on.");
+        return result;
+    }
     if (feature.availabilityMode == QLatin1String("unavailable")) {
         result.state = FeatureState::Unavailable;
         result.detail = feature.unavailableReason;

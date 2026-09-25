@@ -44,6 +44,7 @@ add_executable(controlpanel
     src/ui/pages/FolderOptionsPage.cpp
     src/ui/pages/GettingStartedPage.cpp
     src/ui/pages/SettingsHubPage.cpp
+    src/ui/pages/WindowSnappingPage.cpp
     src/ui/pages/DefaultProgramsPage.cpp
     src/ui/pages/FontsPage.cpp
     src/ui/pages/UserAccountsPage.cpp
