@@ -32,8 +32,9 @@ class SystemSettingsVisibilityTest(unittest.TestCase):
         self.assertEqual(self.run_action("ensure").returncode, 0)
         for name in ("systemsettings.desktop", "kdesystemsettings.desktop"):
             contents = (self.applications / name).read_text()
-            self.assertIn("Hidden=true", contents)
             self.assertIn("NoDisplay=true", contents)
+            self.assertIn("NotShowIn=KDE;", contents)
+            self.assertNotIn("Hidden=true", contents)
         self.assertEqual(self.run_action("enable").returncode, 0)
         self.assertEqual(self.run_action("status").stdout.strip(), "enabled")
         self.assertEqual(self.run_action("ensure").returncode, 0)

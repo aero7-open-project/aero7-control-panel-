@@ -51,7 +51,7 @@ def reconcile(show, applications):
                 changed = True
     else:
         hidden_entry = (MARKER + "[Desktop Entry]\nType=Application\n"
-                        "Name=KDE System Settings\nHidden=true\nNoDisplay=true\n")
+                        "Name=KDE System Settings\nNoDisplay=true\nNotShowIn=KDE;\n")
         for target in targets:
             if not target.exists() or target.read_text(encoding="utf-8") != hidden_entry:
                 atomic_write(target, hidden_entry)
