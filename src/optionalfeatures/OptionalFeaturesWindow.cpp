@@ -3,7 +3,6 @@
 #include "IconHelper.h"
 
 #include <QApplication>
-#include <QCheckBox>
 #include <QDateTime>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -30,6 +29,7 @@
 
 namespace {
 constexpr int FeatureIdRole = Qt::UserRole + 1;
+const QString KdeSettingsFeatureId = QStringLiteral("kde-system-settings-visibility");
 
 QString desktopUser()
 {
@@ -87,7 +87,7 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
     layout->addWidget(title);
 
     auto *intro = new QLabel(tr(
-        "Select a check box to install a feature. Clear a check box to remove it. "
+        "Select a check box to turn on a feature. Clear a check box to turn it off. "
         "A filled box means that only part of the feature is installed."));
     intro->setWordWrap(true);
     layout->addWidget(intro);
@@ -103,15 +103,6 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
     m_tree->setRootIsDecorated(true);
     m_tree->setAlternatingRowColors(false);
     layout->addWidget(m_tree, 1);
-
-    m_showKdeSettings = new QCheckBox(tr("Show KDE System Settings application"));
-    m_showKdeSettings->setToolTip(tr(
-        "Off by default. Aero7 Control Panel remains available for normal settings."));
-    layout->addWidget(m_showKdeSettings);
-    auto *kdeSettingsNote = new QLabel(tr(
-        "KDE settings components remain available to Aero7 Control Panel."));
-    kdeSettingsNote->setStyleSheet(QStringLiteral("color: #555555;"));
-    layout->addWidget(kdeSettingsNote);
 
     auto *detailsFrame = new QWidget;
     auto *detailsLayout = new QVBoxLayout(detailsFrame);
@@ -140,10 +131,18 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
 
     connect(m_tree, &QTreeWidget::itemSelectionChanged,
             this, &OptionalFeaturesWindow::updateDescription);
-    connect(m_tree, &QTreeWidget::itemChanged,
-            this, [this]() { if (!m_populating) updateButtons(); });
-    connect(m_showKdeSettings, &QCheckBox::toggled,
-            this, [this]() { if (!m_populating) updateButtons(); });
+    connect(m_tree, &QTreeWidget::itemChanged, this,
+            [this](QTreeWidgetItem *item) {
+                if (m_populating)
+                    return;
+                if (item == m_kdeSettingsItem) {
+                    const QString status = item->checkState(0) == Qt::Checked
+                        ? tr("Shown") : tr("Hidden");
+                    if (item->text(1) != status)
+                        item->setText(1, status);
+                }
+                updateButtons();
+            });
     connect(m_ok, &QPushButton::clicked, this, &OptionalFeaturesWindow::applyChanges);
     connect(m_cancel, &QPushButton::clicked, this, &QWidget::close);
     connect(m_open, &QPushButton::clicked, this, [this]() {
@@ -163,10 +162,10 @@ OptionalFeaturesWindow::OptionalFeaturesWindow(QWidget *parent)
 void OptionalFeaturesWindow::populate()
 {
     m_populating = true;
+    m_kdeSettingsItem = nullptr;
     m_tree->clear();
     m_initialStates.clear();
     m_originalKdeSettingsShown = systemSettingsShown();
-    m_showKdeSettings->setChecked(m_originalKdeSettingsShown);
     QHash<QString, QTreeWidgetItem *> categories;
 
     if (!m_catalog.isValid()) {
@@ -177,18 +176,23 @@ void OptionalFeaturesWindow::populate()
         return;
     }
 
-    for (const FeatureDefinition &feature : m_catalog.features()) {
-        if (!feature.visibleInOptionalFeatures)
-            continue;
-        QTreeWidgetItem *category = categories.value(feature.category);
+    const auto categoryFor = [this, &categories](const QString &name) {
+        QTreeWidgetItem *category = categories.value(name);
         if (!category) {
-            category = new QTreeWidgetItem(m_tree, {feature.category});
+            category = new QTreeWidgetItem(m_tree, {name});
             category->setFlags(Qt::ItemIsEnabled);
             QFont font = category->font(0);
             font.setBold(true);
             category->setFont(0, font);
-            categories.insert(feature.category, category);
+            categories.insert(name, category);
         }
+        return category;
+    };
+
+    for (const FeatureDefinition &feature : m_catalog.features()) {
+        if (!feature.visibleInOptionalFeatures)
+            continue;
+        QTreeWidgetItem *category = categoryFor(feature.category);
 
         const FeatureStatus status = m_catalog.status(feature);
         auto *item = new QTreeWidgetItem(category);
@@ -217,6 +221,17 @@ void OptionalFeaturesWindow::populate()
         }
         m_initialStates.insert(feature.id, status.state);
     }
+    m_kdeSettingsItem = new QTreeWidgetItem(
+        categoryFor(QStringLiteral("System and security")));
+    m_kdeSettingsItem->setText(0, tr("KDE System Settings"));
+    m_kdeSettingsItem->setText(1, m_originalKdeSettingsShown ? tr("Shown") : tr("Hidden"));
+    m_kdeSettingsItem->setData(0, FeatureIdRole, KdeSettingsFeatureId);
+    m_kdeSettingsItem->setToolTip(0, tr(
+        "Show or hide the KDE System Settings application in menus and search."));
+    m_kdeSettingsItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable
+                                | Qt::ItemIsUserCheckable);
+    m_kdeSettingsItem->setCheckState(0, m_originalKdeSettingsShown
+                                           ? Qt::Checked : Qt::Unchecked);
     m_tree->expandAll();
     if (m_tree->topLevelItemCount() && m_tree->topLevelItem(0)->childCount())
         m_tree->setCurrentItem(m_tree->topLevelItem(0)->child(0));
@@ -290,6 +305,14 @@ void OptionalFeaturesWindow::updateDescription()
         return;
     }
     const QString id = selected.first()->data(0, FeatureIdRole).toString();
+    if (id == KdeSettingsFeatureId) {
+        m_description->setText(tr(
+            "Show the KDE System Settings application in menus and search. "
+            "Aero7 Control Panel stays available when this is turned off."));
+        m_compatibility->clear();
+        m_open->setEnabled(false);
+        return;
+    }
     const FeatureDefinition *feature = m_catalog.find(id);
     if (!feature) {
         m_description->clear();
@@ -306,7 +329,8 @@ void OptionalFeaturesWindow::updateDescription()
 
 void OptionalFeaturesWindow::updateButtons()
 {
-    bool changed = m_showKdeSettings->isChecked() != m_originalKdeSettingsShown;
+    bool changed = (m_kdeSettingsItem->checkState(0) == Qt::Checked)
+                   != m_originalKdeSettingsShown;
     for (auto it = m_initialStates.cbegin(); it != m_initialStates.cend(); ++it) {
         QTreeWidgetItem *item = itemForFeature(it.key());
         if (!item || item->isDisabled())
@@ -325,8 +349,8 @@ void OptionalFeaturesWindow::updateButtons()
 void OptionalFeaturesWindow::applyChanges()
 {
     QStringList changes;
-    const bool visibilityChanged =
-        m_showKdeSettings->isChecked() != m_originalKdeSettingsShown;
+    const bool showKdeSettings = m_kdeSettingsItem->checkState(0) == Qt::Checked;
+    const bool visibilityChanged = showKdeSettings != m_originalKdeSettingsShown;
     int totalSize = 0;
     bool logout = false;
     bool reboot = false;
@@ -383,7 +407,7 @@ void OptionalFeaturesWindow::applyChanges()
     for (const QString &change : changes)
         actions << QStringLiteral("• ") + actionText(change, m_catalog);
     if (visibilityChanged)
-        actions << (m_showKdeSettings->isChecked()
+        actions << (showKdeSettings
             ? tr("• Show KDE System Settings in applications and search")
             : tr("• Hide KDE System Settings from applications and search"));
     for (const QString &change : changes) {
@@ -418,8 +442,8 @@ void OptionalFeaturesWindow::applyChanges()
     if (visibilityChanged) {
         QProcess visibility;
         visibility.start(systemSettingsVisibilityProgram(),
-                         {m_showKdeSettings->isChecked() ? QStringLiteral("enable")
-                                                         : QStringLiteral("disable")});
+                         {showKdeSettings ? QStringLiteral("enable")
+                                          : QStringLiteral("disable")});
         if (!visibility.waitForFinished(35000)
             || visibility.exitStatus() != QProcess::NormalExit || visibility.exitCode() != 0) {
             QMessageBox::critical(this, tr("Aero7 Features"),
@@ -428,7 +452,7 @@ void OptionalFeaturesWindow::applyChanges()
             populate();
             return;
         }
-        m_originalKdeSettingsShown = m_showKdeSettings->isChecked();
+        m_originalKdeSettingsShown = showKdeSettings;
     }
     if (changes.isEmpty()) {
         close();
