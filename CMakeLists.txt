@@ -344,6 +344,25 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
 
+    add_executable(window-snapping-apply-test
+        tests/WindowSnappingApplyTest.cpp
+        src/ui/pages/WindowSnappingPage.h
+        src/ui/pages/WindowSnappingPage.cpp
+    )
+    target_include_directories(window-snapping-apply-test PRIVATE
+        src/ui
+        src/ui/pages
+    )
+    target_link_libraries(window-snapping-apply-test PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Aero7Qt::Aero7Qt
+    )
+    add_test(NAME window-snapping-apply-test COMMAND window-snapping-apply-test)
+    set_tests_properties(window-snapping-apply-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp
         resources/icons.qrc

@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Automated tests | 18 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, and Taskbar/Start Menu save/readback failures. |
+| Automated tests | 19 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, and Window Snapping helper/readback failures. |
 
 ## VM evidence
 
@@ -42,6 +42,15 @@ the selected values, and read back all requested fields; the integration check
 exited 0. The same check passed on the development host. This verifies a
 no-op apply/readback path, not every individual visual behavior of the controls.
 
+The same VM image does not contain `/usr/lib/aero7-desktop/aero7-snap-control`,
+although the current Aero7 Desktop source installs that helper. Window Snapping
+now shows an unavailable state and disables its slider when the helper cannot
+load. After temporarily copying the current helper into the disposable guest,
+the page changed sensitivity by one step, read it back, and restored the
+original value successfully (`window-snapping-apply-test` exited 0). A future
+installed-package/ISO verification must check that the helper is actually
+included at its expected path; the temporary copy does not prove packaging.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -58,6 +67,9 @@ reports blanket success when the helper is missing or exits with an error.
 Taskbar and Start Menu now refuse to claim success when the Aero7 panel,
 SevenTasks, or SevenStart component is absent, when Plasma rejects the command,
 or when its readback does not match the requested values.
+Window Snapping now refuses to claim success unless its helper rereads the
+requested sensitivity. The installed VM image's missing helper remains a
+packaging acceptance gap.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown
