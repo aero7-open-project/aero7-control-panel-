@@ -54,8 +54,9 @@ DefaultProgramsPage::DefaultProgramsPage(QScrollArea *sidebar, QWidget *parent)
 
     auto *headingRow = new QHBoxLayout;
     auto *icon = new QLabel;
+    icon->setObjectName(QStringLiteral("internetExplorerIcon"));
     icon->setFixedSize(48, 48);
-    icon->setPixmap(resolveIcon(QStringLiteral("aero7-internet-explorer"))
+    icon->setPixmap(resolveIcon(QStringLiteral("internet-web-browser"))
                         .pixmap(48, 48));
     headingRow->addWidget(icon, 0, Qt::AlignTop);
     auto *headingText = new QVBoxLayout;
@@ -100,9 +101,11 @@ DefaultProgramsPage::DefaultProgramsPage(QScrollArea *sidebar, QWidget *parent)
             this, &DefaultProgramsPage::createShortcut);
     actions->addWidget(shortcut);
     auto *settings = new QPushButton(QStringLiteral("Advanced settings..."));
-    connect(settings, &QPushButton::clicked, this, [] {
-        QProcess::startDetached(DefaultProgramsPage::launcherExecutable(),
-                                {QStringLiteral("--settings")});
+    connect(settings, &QPushButton::clicked, this, [this] {
+        if (!QProcess::startDetached(DefaultProgramsPage::launcherExecutable(),
+                                     {QStringLiteral("--settings")}))
+            setStatus(QStringLiteral("Could not open Internet Explorer's advanced settings."),
+                      true);
     });
     actions->addWidget(settings);
     actions->addStretch(1);
@@ -157,7 +160,8 @@ DefaultProgramsPage::runLauncher(const QStringList &arguments)
         result.error = QByteArrayLiteral("The operation timed out.");
         return result;
     }
-    result.exitCode = process.exitCode();
+    result.exitCode = process.exitStatus() == QProcess::NormalExit
+        ? process.exitCode() : -1;
     result.output = process.readAllStandardOutput();
     result.error = process.readAllStandardError();
     return result;
@@ -165,11 +169,13 @@ DefaultProgramsPage::runLauncher(const QStringList &arguments)
 
 void DefaultProgramsPage::loadStatus()
 {
+    m_statusValid = false;
+    m_browser->setEnabled(false);
+    m_defaultBrowser->setEnabled(false);
+    m_apply->setEnabled(false);
     const CommandResult result = runLauncher({QStringLiteral("--status-json")});
     if (!result.started || result.exitCode != 0) {
-        m_browser->setEnabled(false);
-        m_defaultBrowser->setEnabled(false);
-        m_apply->setEnabled(false);
+        m_browser->clear();
         setStatus(QStringLiteral(
             "Internet Explorer integration is not installed. Install or update "
             "the aero7-internet-explorer package."), true);
@@ -177,6 +183,7 @@ void DefaultProgramsPage::loadStatus()
     }
     const QJsonDocument document = QJsonDocument::fromJson(result.output);
     if (!document.isObject()) {
+        m_browser->clear();
         setStatus(QStringLiteral("Internet Explorer returned invalid status information."), true);
         return;
     }
@@ -203,7 +210,9 @@ void DefaultProgramsPage::loadStatus()
     m_defaultBrowser->setChecked(m_wasDefault);
     const bool locked = status.value(QStringLiteral("policyLocked")).toBool();
     m_browser->setEnabled(!locked && m_browser->count() > 0);
-    m_apply->setEnabled(m_browser->count() > 0);
+    m_defaultBrowser->setEnabled(!locked && m_browser->count() > 0);
+    m_apply->setEnabled(!locked && m_browser->count() > 0);
+    m_statusValid = true;
     if (m_browser->count() == 0) {
         setStatus(QStringLiteral("No compatible web browser is installed."), true);
     } else if (locked) {
@@ -215,17 +224,20 @@ void DefaultProgramsPage::loadStatus()
 
 void DefaultProgramsPage::applySelection()
 {
-    if (m_browser->currentIndex() < 0) return;
+    if (!m_statusValid || m_browser->currentIndex() < 0)
+        return;
+    const QString requestedBackend = m_browser->currentData().toString();
+    const bool requestedDefault = m_defaultBrowser->isChecked();
     const CommandResult backend = runLauncher({QStringLiteral("--set-backend"),
-                                                m_browser->currentData().toString()});
+                                                requestedBackend});
     if (!backend.started || backend.exitCode != 0) {
         setStatus(QString::fromUtf8(backend.error).trimmed().isEmpty()
             ? QStringLiteral("The browser selection could not be saved.")
             : QString::fromUtf8(backend.error).trimmed(), true);
         return;
     }
-    if (m_defaultBrowser->isChecked() != m_wasDefault) {
-        const QString option = m_defaultBrowser->isChecked()
+    if (requestedDefault != m_wasDefault) {
+        const QString option = requestedDefault
             ? QStringLiteral("--set-default") : QStringLiteral("--restore-defaults");
         const CommandResult defaults = runLauncher({option});
         if (!defaults.started || defaults.exitCode != 0) {
@@ -235,8 +247,25 @@ void DefaultProgramsPage::applySelection()
             return;
         }
     }
-    setStatus(QStringLiteral("Internet Explorer defaults were updated."));
+    const CommandResult verified = runLauncher({QStringLiteral("--status-json")});
+    const QJsonDocument document = QJsonDocument::fromJson(verified.output);
+    if (!verified.started || verified.exitCode != 0 || !document.isObject()
+        || document.object().value(QStringLiteral("selectedDesktopId")).toString()
+               != requestedBackend
+        || document.object().value(QStringLiteral("isDefault")).toBool()
+               != requestedDefault) {
+        setStatus(QStringLiteral(
+            "Internet Explorer did not retain every requested default."), true);
+        return;
+    }
     loadStatus();
+    if (!m_statusValid
+        || m_browser->currentData().toString() != requestedBackend
+        || m_defaultBrowser->isChecked() != requestedDefault) {
+        setStatus(QStringLiteral("Internet Explorer could not confirm the saved defaults."), true);
+        return;
+    }
+    setStatus(QStringLiteral("Internet Explorer defaults were updated."));
 }
 
 void DefaultProgramsPage::createShortcut()

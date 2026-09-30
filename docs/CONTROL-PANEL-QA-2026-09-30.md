@@ -5,7 +5,7 @@ checks from proof that a setting changes its system backend.
 
 | Area | Checked | Result |
 | --- | --- | --- |
-| Search/catalog entries | 72 settings and 13 optional-feature entries | All 85 have exact, bundled AeroThemePlasma icon-pack assets; `settings-icons-test` enforces this. All 45 All Control Panel Items icons also have exact bundled assets; Devices and Printers and Sync Center use more appropriate icons from the same pack. |
+| Search/catalog entries | 72 settings and 13 optional-feature entries | All 85 have exact, bundled AeroThemePlasma icon-pack assets; `settings-icons-test` enforces this. All 45 All Control Panel Items icons also have exact bundled assets; Devices and Printers and Sync Center use more appropriate icons from the same pack. The Internet Explorer card now uses the pack's matching browser icon rather than an absent icon name. |
 | Setting entry points | 70 in-app routes | Offscreen startup smoke: no crashes or application errors. The remaining two entries launch Window Color and Programs Center; their executables and the Window Color plugin are present on the host. |
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
@@ -60,6 +60,14 @@ opened visually in the VM. Its advanced plan links now target the installed KDE
 Power Management module, while the wake-password link targets Lock Screen.
 The information link now explains the plans instead of doing nothing.
 
+Default Programs was checked in the same VM. Its installed Internet Explorer
+launcher reports no compatible browser backends there, so a real default-app
+switch cannot be accepted on that image. The updated page's controlled-launcher
+test ran inside the VM: saved selections were read back, ignored writes were
+rejected, malformed status disabled Save, and the bundled Internet Explorer
+icon loaded without the previous missing-icon warning. A browser-equipped VM
+still needs a real association-change and restore check.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -82,6 +90,8 @@ packaging acceptance gap.
 Power Options now waits for the power service's response and confirms the
 active profile before claiming success. An unavailable service leaves the
 fallback plan disabled rather than offering a no-op control.
+Default Programs now rereads browser and default-association status after Save
+and refuses to report success if the launcher did not retain either choice.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

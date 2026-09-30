@@ -287,10 +287,15 @@ if(BUILD_TESTING)
     )
 
     add_executable(default-programs-page-test
+        resources/icons.qrc
         tests/DefaultProgramsPageTest.cpp
         src/ui/pages/DefaultProgramsPage.h
         src/ui/pages/DefaultProgramsPage.cpp
     )
+    qt_add_resources(default-programs-page-test "aero7-default-programs-pack-icons-test"
+        PREFIX "/aero7/pack"
+        BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+        FILES ${AERO7_PACK_ICON_FILES})
     target_include_directories(default-programs-page-test PRIVATE
         src/ui
         src/ui/pages

@@ -39,4 +39,5 @@ private:
     QLabel *m_status = nullptr;
     QPushButton *m_apply = nullptr;
     bool m_wasDefault = false;
+    bool m_statusValid = false;
 };
