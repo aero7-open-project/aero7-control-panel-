@@ -1,4 +1,5 @@
 #include "PowerOptionsPage.h"
+#include "KdeSettingsBridge.h"
 #include "Win7Ui.h"
 #include "LinkLabel.h"
 
@@ -15,6 +16,7 @@
 #include <QToolButton>
 #include <QSignalBlocker>
 #include <QMouseEvent>
+#include <QMessageBox>
 #include <QEvent>
 #include <QProgressBar>
 
@@ -24,6 +26,8 @@
 #include <QDBusVariant>
 #include <QDBusArgument>
 #include <QDBusObjectPath>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 
 // power-profiles-daemon access//
 // PPD lives on the system bus. All access goes through the standard
@@ -102,17 +106,45 @@ QString PowerOptionsPage::activeProfile() const
 
 void PowerOptionsPage::setActiveProfile(const QString &profileId)
 {
-    if (profileId.isEmpty())
+    if (profileId.isEmpty() || m_applying)
         return;
     QDBusInterface props = ppdProperties();
-    if (!props.isValid())
+    if (!props.isValid()) {
+        m_status->setText(tr("Power profile service is unavailable."));
+        syncSelection();
         return;
-    // Fire-and-forget so a slow daemon never stalls the UI thread. polkit lets
-    // the active local session set this without a password prompt, just like
-    // `powerprofilesctl set`.
-    props.asyncCall(QStringLiteral("Set"), QString::fromLatin1(kInterface),
-                    QStringLiteral("ActiveProfile"),
-                    QVariant::fromValue(QDBusVariant(profileId)));
+    }
+    if (activeProfile() == profileId) {
+        m_status->setText(tr("This power plan is already active."));
+        return;
+    }
+    m_applying = true;
+    m_status->setText(tr("Applying power plan..."));
+    for (QAbstractButton *button : m_group->buttons())
+        button->setEnabled(false);
+    auto *watcher = new QDBusPendingCallWatcher(
+        props.asyncCall(QStringLiteral("Set"), QString::fromLatin1(kInterface),
+                        QStringLiteral("ActiveProfile"),
+                        QVariant::fromValue(QDBusVariant(profileId))), this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this,
+            [this, watcher, profileId]() {
+                const QDBusPendingReply<> reply = *watcher;
+                watcher->deleteLater();
+                m_applying = false;
+                for (QAbstractButton *button : m_group->buttons())
+                    button->setEnabled(true);
+                const QString actual = activeProfile();
+                if (reply.isError() || actual != profileId) {
+                    m_status->setText(reply.isError()
+                        ? tr("Could not apply the power plan: %1")
+                              .arg(reply.error().message())
+                        : tr("The power service did not retain the selected plan."));
+                    syncSelection();
+                    return;
+                }
+                m_status->setText(tr("Power plan applied."));
+                syncSelection();
+            });
 }
 
 PowerOptionsPage::BatteryInfo PowerOptionsPage::batteryInfo() const
@@ -178,9 +210,14 @@ QList<SidebarLink> PowerOptionsPage::sidebarLinks()
     // "Control Panel Home" is prepended by the sidebar shell itself, so it must
     // not be repeated here.
     return {
-        Nav::to("Require a password when the computer wakes", PageId::StartupShutdown),
-        Nav::to("Choose what the power buttons do", PageId::PowerOptions),
-        Nav::to("Advanced sleep and display settings", PageId::PowerOptions),
+        Nav::command("Require a password when the computer wakes",
+                     {"kcmshell6", "--caption", "Lock Screen", "kcm_screenlocker"}),
+        Nav::command("Choose what the power buttons do",
+                     {"kcmshell6", "--caption", "Advanced Power Settings",
+                      "kcm_powerdevilprofilesconfig"}),
+        Nav::command("Advanced sleep and display settings",
+                     {"kcmshell6", "--caption", "Advanced Power Settings",
+                      "kcm_powerdevilprofilesconfig"}),
     };
 }
 
@@ -211,8 +248,7 @@ PowerOptionsPage::PowerOptionsPage(QScrollArea *sidebar, QWidget *parent)
     contentV->addSpacing(10);
 
     // Intro paragraph with the trailing "Tell me more…" link. A real <a> gives
-    // the underlined, palette-coloured link Windows shows; it's informational
-    // only, so it points nowhere.
+    // the underlined, palette-coloured link Windows shows.
     auto *intro = new QLabel(
         "Power plans can help you maximize your computer's performance or "
         "conserve energy. Make a plan active by selecting it, or choose a plan "
@@ -226,7 +262,14 @@ PowerOptionsPage::PowerOptionsPage(QScrollArea *sidebar, QWidget *parent)
     intro->setWordWrap(true);
     intro->setOpenExternalLinks(false);
     intro->setTextInteractionFlags(Qt::TextBrowserInteraction);
-    connect(intro, &QLabel::linkActivated, this, []() {});
+    connect(intro, &QLabel::linkActivated, this, [this]() {
+        QMessageBox::information(this, tr("About power plans"), tr(
+            "Balanced adjusts performance and energy use automatically. "
+            "Power saver favors lower energy use, while High performance "
+            "favors speed when your hardware offers it. Select an available "
+            "plan here; use Change plan settings for sleep, display and "
+            "power-button controls."));
+    });
     {
         QPalette pal = intro->palette();
         pal.setColor(QPalette::Link, QColor("#1F4E99"));
@@ -234,6 +277,12 @@ PowerOptionsPage::PowerOptionsPage(QScrollArea *sidebar, QWidget *parent)
     }
     intro->setStyleSheet("color: #1A1A1A; background: transparent;");
     contentV->addWidget(intro);
+    m_status = Win7::label(
+        m_ppdAvailable ? QString()
+                       : tr("Power profile switching is unavailable on this computer."),
+        9, "#333333");
+    m_status->setObjectName(QStringLiteral("powerPlanStatus"));
+    contentV->addWidget(m_status);
     contentV->addSpacing(16);
 
     const BatteryInfo battery = batteryInfo();
@@ -411,9 +460,11 @@ void PowerOptionsPage::buildPlans(const QStringList &profiles)
         (plan.additional ? m_additionalBox : m_planList)->addWidget(row);
     }
 
-    // With nothing wired up, pre-select the lone fall-back plan.
-    if (!m_ppdAvailable && !m_group->buttons().isEmpty())
+    // Show the unavailable fall-back plan without presenting it as selectable.
+    if (!m_ppdAvailable && !m_group->buttons().isEmpty()) {
         m_group->buttons().first()->setChecked(true);
+        m_group->buttons().first()->setEnabled(false);
+    }
 }
 
 QWidget *PowerOptionsPage::buildPlanRow(const Plan &plan)
@@ -464,7 +515,10 @@ QWidget *PowerOptionsPage::buildPlanRow(const Plan &plan)
     nameLine->addStretch(1);
 
     auto *change = new LinkLabel("Change plan settings");
-    connect(change, &LinkLabel::clicked, this, [radio]() { radio->setChecked(true); });
+    connect(change, &LinkLabel::clicked, this, [this]() {
+        KdeSettingsBridge::open(this, QStringLiteral("kcm_powerdevilprofilesconfig"),
+                                QStringLiteral("Advanced Power Settings"));
+    });
     nameLine->addWidget(change, 0, Qt::AlignVCenter);
 
     textV->addLayout(nameLine);
@@ -489,10 +543,15 @@ void PowerOptionsPage::syncSelection()
     if (!m_ppdAvailable)
         return;
     const QString active = activeProfile();
-    if (active.isEmpty())
-        return;
-
     m_syncing = true;
+    m_group->setExclusive(false);
+    for (QAbstractButton *button : m_group->buttons())
+        button->setChecked(false);
+    m_group->setExclusive(true);
+    if (active.isEmpty()) {
+        m_syncing = false;
+        return;
+    }
     for (QAbstractButton *btn : m_group->buttons()) {
         if (btn->property("profileId").toString() == active) {
             btn->setChecked(true);

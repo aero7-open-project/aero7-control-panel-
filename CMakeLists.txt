@@ -363,6 +363,28 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
 
+    add_executable(power-options-apply-test
+        tests/PowerOptionsApplyTest.cpp
+        src/ui/LinkLabel.h
+        src/ui/KdeSettingsBridge.cpp
+        src/ui/pages/PowerOptionsPage.h
+        src/ui/pages/PowerOptionsPage.cpp
+    )
+    target_include_directories(power-options-apply-test PRIVATE
+        src/ui
+        src/ui/pages
+    )
+    target_link_libraries(power-options-apply-test PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Qt6::DBus
+        Aero7Qt::Aero7Qt
+    )
+    add_test(NAME power-options-apply-test COMMAND power-options-apply-test)
+    set_tests_properties(power-options-apply-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp
         resources/icons.qrc

@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Automated tests | 19 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, and Window Snapping helper/readback failures. |
+| Automated tests | 20 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, and Power Options' unavailable-service state and advanced-link routing. |
 
 ## VM evidence
 
@@ -51,6 +51,15 @@ original value successfully (`window-snapping-apply-test` exited 0). A future
 installed-package/ISO verification must check that the helper is actually
 included at its expected path; the temporary copy does not prove packaging.
 
+Power Options was checked against a VM with Balanced and Power Saver profiles.
+The first SSH-launched test was correctly rejected by Polkit as an inactive
+remote session; no profile changed. The same test then launched from the
+graphical Aero7 session, switched to Power Saver, confirmed the service's
+readback, restored Balanced, and exited 0. The updated Power Options page was
+opened visually in the VM. Its advanced plan links now target the installed KDE
+Power Management module, while the wake-password link targets Lock Screen.
+The information link now explains the plans instead of doing nothing.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -70,6 +79,9 @@ or when its readback does not match the requested values.
 Window Snapping now refuses to claim success unless its helper rereads the
 requested sensitivity. The installed VM image's missing helper remains a
 packaging acceptance gap.
+Power Options now waits for the power service's response and confirms the
+active profile before claiming success. An unavailable service leaves the
+fallback plan disabled rather than offering a no-op control.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

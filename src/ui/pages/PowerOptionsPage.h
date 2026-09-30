@@ -24,8 +24,8 @@ class QEvent;
 // system bus:
 //   * Reading  net.hadess.PowerProfiles.Profiles / .ActiveProfile lists the
 //     available plans and the active one.
-//   * Selecting a plan writes .ActiveProfile (polkit lets the active session do
-//     this without a password, exactly like `powerprofilesctl set`).
+//   * Selecting a plan writes .ActiveProfile and confirms the result with a
+//     readback before reporting success.
 //   * A PropertiesChanged subscription keeps the selection in sync when the
 //     profile is changed elsewhere (KDE tray, another app, on AC/battery).
 //
@@ -35,8 +35,8 @@ class QEvent;
 //   power-saver  -> "Power saver"
 //
 // When PPD is absent (typical on a desktop with no profile switching) the page
-// degrades to a single, selected "Balanced (recommended)" plan, mirroring what
-// Windows shows on hardware that exposes no alternative plans.
+// shows a disabled "Balanced (recommended)" placeholder and explains that
+// profile switching is unavailable rather than offering a no-op selection.
 class PowerOptionsPage : public QWidget {
     Q_OBJECT
 
@@ -97,7 +97,9 @@ private:
     QWidget      *m_additionalWrap = nullptr;  // toggled by the expander
     QWidget      *m_additionalHeader = nullptr; // heading row, hidden if empty
     QButtonGroup *m_group         = nullptr;
+    QLabel       *m_status        = nullptr;
     bool          m_ppdAvailable  = false;
+    bool          m_applying      = false;
     bool          m_syncing       = false;     // guards programmatic re-checks
 
     // Maps each plan's name label to its radio, so clicking the name selects it.
