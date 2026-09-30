@@ -6,6 +6,7 @@
 #include "Branding.h"
 #include "LinkLabel.h"
 #include "FeatureCatalog.h"
+#include "FirewallBackend.h"
 
 #include <QScrollArea>
 #include <QLabel>
@@ -29,9 +30,9 @@ ActionCenterPage::AcInfo ActionCenterPage::gatherInfo()
 {
     AcInfo ac;
 
-    ac.firewallOn = readConfField(QStringLiteral("/etc/ufw/ufw.conf"),
-                                  QStringLiteral("ENABLED")).compare(
-                                      QStringLiteral("yes"), Qt::CaseInsensitive) == 0;
+    const auto firewall = FirewallBackend::detect();
+    ac.firewallOn = firewall.active;
+    ac.firewallName = firewall.name;
 
     // "Spyware and unwanted software protection" maps to an on-demand scanner.
     // ClamAV is the ubiquitous Linux one; report it when its binary is present.
@@ -356,9 +357,10 @@ ActionCenterPage::ActionCenterPage(QScrollArea *sidebar, QWidget *parent)
         v->addWidget(buildStatusRow(
             "Network firewall", info.firewallOn ? "On" : "Off",
             info.firewallOn
-                ? Branding::brand("Linux Firewall (ufw) is actively "
-                                  "protecting your computer.")
-                : Branding::brand("Linux Firewall (ufw) is turned off.")));
+                ? QStringLiteral("Linux Firewall (%1) is actively protecting "
+                                 "your computer.").arg(info.firewallName)
+                : QStringLiteral("Linux Firewall (%1) is turned off.")
+                      .arg(info.firewallName)));
         v->addWidget(buildStatusRow(
             "Spyware and unwanted software protection",
             info.avPresent ? "On" : "Off",

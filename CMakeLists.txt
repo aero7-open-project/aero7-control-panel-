@@ -137,7 +137,7 @@ qt_add_resources(aero7-action-center "aero7-action-center-pack-icons"
     PREFIX "/aero7/pack"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
     FILES ${AERO7_PACK_ICON_FILES})
-target_include_directories(aero7-action-center PRIVATE src/ui)
+target_include_directories(aero7-action-center PRIVATE src/ui src/data)
 target_link_libraries(aero7-action-center PRIVATE
     Qt6::Widgets Qt6::DBus Qt6::Network Aero7Qt::Aero7Qt LayerShellQt::Interface)
 install(TARGETS aero7-action-center RUNTIME DESTINATION bin)
@@ -389,6 +389,11 @@ if(BUILD_TESTING)
     set_tests_properties(power-options-apply-test PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
+
+    add_executable(firewall-backend-test tests/FirewallBackendTest.cpp)
+    target_include_directories(firewall-backend-test PRIVATE src/data)
+    target_link_libraries(firewall-backend-test PRIVATE Qt6::Test)
+    add_test(NAME firewall-backend-test COMMAND firewall-backend-test)
 
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp

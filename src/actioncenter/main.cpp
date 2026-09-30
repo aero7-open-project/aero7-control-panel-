@@ -1,4 +1,5 @@
 #include "IconHelper.h"
+#include "FirewallBackend.h"
 
 #include <Aero7Qt/stylesheet.h>
 #include <LayerShellQt/Window>
@@ -7,14 +8,12 @@
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDialog>
-#include <QFile>
 #include <QFrame>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QNetworkInterface>
 #include <QProcess>
 #include <QPushButton>
-#include <QRegularExpression>
 #include <QScreen>
 #include <QStorageInfo>
 #include <QSystemTrayIcon>
@@ -36,20 +35,10 @@ QString commandOutput(const QString &program, const QStringList &arguments, int 
     return QString::fromUtf8(process.readAllStandardOutput()).trimmed();
 }
 
-bool firewallEnabled()
-{
-    QFile file(QStringLiteral("/etc/ufw/ufw.conf"));
-    if (!file.open(QIODevice::ReadOnly))
-        return false;
-    return QString::fromUtf8(file.readAll()).contains(QRegularExpression(
-        QStringLiteral("^ENABLED=yes$"), QRegularExpression::MultilineOption
-        | QRegularExpression::CaseInsensitiveOption));
-}
-
 QVector<Issue> gatherIssues()
 {
     QVector<Issue> issues;
-    if (!firewallEnabled())
+    if (!FirewallBackend::detect().active)
         issues.push_back({QStringLiteral("Network firewall is off"),
                           QStringLiteral("Turn on the firewall or review its current configuration."),
                           QStringLiteral("firewall")});

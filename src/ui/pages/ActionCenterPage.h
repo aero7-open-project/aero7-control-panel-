@@ -15,7 +15,7 @@ class QVBoxLayout;
 // Security and Maintenance, each a stack of "item / state / description" rows
 // with the state ("On"/"Off"/"OK"/…) right-aligned. The rows that map to a real
 // Linux facility are filled from live state read the same cheap, root-free way
-// the other pages use (ufw config for the firewall, an antivirus binary probe,
+// the other pages use (the active firewall backend, an antivirus binary probe,
 // the polkit authority for UAC); the remaining rows mirror Windows' wording with
 // truthful live values. Unsupported Windows-only rows are omitted.
 class ActionCenterPage : public QWidget {
@@ -35,7 +35,8 @@ signals:
 private:
     // Live facts backing the Security rows, gathered once in the constructor.
     struct AcInfo {
-        bool    firewallOn = false;   // ufw.conf ENABLED=yes
+        bool    firewallOn = false;
+        QString firewallName;
         bool    avPresent  = false;   // an on-demand scanner (ClamAV) is installed
         QString avName;               // display name of that scanner
         bool    uacOn      = false;   // a polkit authority is on the bus

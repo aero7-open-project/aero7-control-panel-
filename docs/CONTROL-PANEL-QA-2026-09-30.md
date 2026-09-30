@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Automated tests | 20 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, and Power Options' unavailable-service state and advanced-link routing. |
+| Automated tests | 21 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, and firewall-backend selection. |
 
 ## VM evidence
 
@@ -71,6 +71,20 @@ no Qt warnings after supplying the normal sidebar scaffold. Switching the
 actual system-wide default associations off and back on remains a separate
 acceptance check; the VM run kept the pre-existing default-association state.
 
+The fresh-install VM has firewalld but not UFW. The old Firewall and both
+Action Center views read only `/etc/ufw/ufw.conf`, so they reported the wrong
+backend or an off state. The shared backend detector now selects firewalld on
+that VM and preserves an active UFW installation when present. The new backend
+test passed both on the host and in the disposable VM (5 Qt assertions/groups,
+0 failures); the updated Firewall page started offscreen in the VM without an
+application error. The VM's firewalld service was temporarily stopped during
+SSH-based QA, so these checks do **not** prove an actual authenticated on/off
+click. That GUI/Polkit toggle and its service readback still need an active
+desktop-session acceptance run. Firewalld-specific zone rule editing, logging,
+and restore-defaults controls are visibly unavailable rather than issuing
+UFW commands against the wrong backend. The tray Action Center now uses the
+same detector as the Control Panel page.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -95,6 +109,12 @@ active profile before claiming success. An unavailable service leaves the
 fallback plan disabled rather than offering a no-op control.
 Default Programs now rereads browser and default-association status after Save
 and refuses to report success if the launcher did not retain either choice.
+Firewall status now follows the installed active backend. The firewalld
+on/off action waits for `systemctl` and verifies the resulting service state
+before claiming success; its Polkit path has not yet been exercised in the
+graphical VM session. The existing UFW toggle likewise rereads `ufw.conf`
+before claiming success. Firewalld rule editing still needs a working Aero7 UI or
+an installed compatible settings module.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

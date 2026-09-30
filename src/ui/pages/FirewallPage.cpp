@@ -3,6 +3,7 @@
 #include "IconHelper.h"
 #include "Win7Ui.h"
 #include "Branding.h"
+#include "FirewallBackend.h"
 
 #include <QScrollArea>
 #include <QLabel>
@@ -154,21 +155,25 @@ FirewallPage::FwInfo FirewallPage::gatherInfo()
 {
     FwInfo fw;
 
-    fw.enabled = readConfField(QStringLiteral("/etc/ufw/ufw.conf"),
-                           QStringLiteral("ENABLED")).compare(
-                               QStringLiteral("yes"), Qt::CaseInsensitive) == 0;
-    fw.logLevel = readConfField(QStringLiteral("/etc/ufw/ufw.conf"),
-                            QStringLiteral("LOGLEVEL"));
+    const auto backend = FirewallBackend::detect();
+    fw.backend = backend.kind;
+    fw.backendName = backend.name;
+    fw.enabled = backend.active;
 
-    fw.inputPolicy  = readConfField(QStringLiteral("/etc/default/ufw"),
-                                QStringLiteral("DEFAULT_INPUT_POLICY")).toUpper();
-    fw.outputPolicy = readConfField(QStringLiteral("/etc/default/ufw"),
-                                QStringLiteral("DEFAULT_OUTPUT_POLICY")).toUpper();
-    if (fw.inputPolicy.isEmpty())
-        fw.inputPolicy = QStringLiteral("DROP");
+    if (fw.backend == FirewallBackend::Kind::Ufw) {
+        fw.logLevel = readConfField(QStringLiteral("/etc/ufw/ufw.conf"),
+                                QStringLiteral("LOGLEVEL"));
 
-    fw.ruleCount = countRules(QStringLiteral("/etc/ufw/user.rules"))
-                 + countRules(QStringLiteral("/etc/ufw/user6.rules"));
+        fw.inputPolicy = readConfField(QStringLiteral("/etc/default/ufw"),
+                                   QStringLiteral("DEFAULT_INPUT_POLICY")).toUpper();
+        fw.outputPolicy = readConfField(QStringLiteral("/etc/default/ufw"),
+                                    QStringLiteral("DEFAULT_OUTPUT_POLICY")).toUpper();
+        if (fw.inputPolicy.isEmpty())
+            fw.inputPolicy = QStringLiteral("DROP");
+
+        fw.ruleCount = countRules(QStringLiteral("/etc/ufw/user.rules"))
+                     + countRules(QStringLiteral("/etc/ufw/user6.rules"));
+    }
 
     fw.netConnected = hasDefaultRoute();
     fw.networkName  = QStringLiteral("Network");
@@ -179,13 +184,17 @@ FirewallPage::FwInfo FirewallPage::gatherInfo()
 // Sidebar
 QList<SidebarLink> FirewallPage::sidebarLinks()
 {
+    const bool ufw = FirewallBackend::detect().kind == FirewallBackend::Kind::Ufw;
     return {
-        Nav::plain("Allow a port or service through Linux Firewall"),
-        Nav::to("Change notification settings", PageId::Firewall),
-        Nav::plain("Turn Linux Firewall on or off"),
-        Nav::plain("Restore defaults"),
-        Nav::plain("Advanced settings"),
-        Nav::plain("Troubleshoot my network"),
+        ufw ? Nav::to("Allow a port or service through Linux Firewall", PageId::Firewall)
+            : Nav::disabled("Allow a port or service through Linux Firewall"),
+        ufw ? Nav::to("Change notification settings", PageId::Firewall)
+            : Nav::disabled("Change notification settings"),
+        Nav::to("Turn Linux Firewall on or off", PageId::Firewall),
+        ufw ? Nav::to("Restore defaults", PageId::Firewall)
+            : Nav::disabled("Restore defaults"),
+        Nav::disabled("Advanced settings"),
+        Nav::to("Troubleshoot my network", PageId::NetworkSharing),
     };
 }
 
@@ -296,10 +305,12 @@ QWidget *FirewallPage::buildLocationPanel(const QString &title,
     bodyV->setContentsMargins(0, 4, 0, 14);
     bodyV->setSpacing(0);
 
-    auto *caption = Win7::bodyLabel(
-        "Linux Firewall (ufw) applies one set of rules to every network. Unlike "
-        "firewalls with location profiles, it has no separate Home, Work, or "
-        "Public rule sets.");
+    auto *caption = Win7::bodyLabel(info.backend == FirewallBackend::Kind::Firewalld
+        ? QStringLiteral("Linux Firewall uses firewalld zones. The current "
+                         "Aero7 page shows service status; use firewall-cmd "
+                         "to inspect or change advanced zone rules.")
+        : QStringLiteral("Linux Firewall (UFW) applies one set of rules to every "
+                         "network. It has no separate Home, Work, or Public rule sets."));
     caption->setContentsMargins(kLeftInset, 0, kRightInset, 0);
     bodyV->addWidget(caption);
     bodyV->addSpacing(12);
@@ -316,13 +327,17 @@ QWidget *FirewallPage::buildLocationPanel(const QString &title,
     grid->setColumnStretch(1, 1);
 
     int r = 0;
-    grid->addWidget(Win7::bodyLabel(Branding::brand("Linux Firewall state:")),
+    grid->addWidget(Win7::bodyLabel(QStringLiteral("Linux Firewall (%1) state:")
+                                       .arg(info.backendName)),
                     r, 0);
     grid->addWidget(Win7::bodyLabel(info.enabled ? "On" : "Off"), r, 1);
     ++r;
 
     grid->addWidget(Win7::bodyLabel("Incoming connections:"), r, 0);
-    grid->addWidget(Win7::bodyLabel(incomingText(info.inputPolicy)), r, 1);
+    grid->addWidget(Win7::bodyLabel(
+        info.backend == FirewallBackend::Kind::Firewalld
+            ? QStringLiteral("Managed by firewalld zones")
+            : incomingText(info.inputPolicy)), r, 1);
     ++r;
 
     grid->addWidget(Win7::bodyLabel("Active networks:"), r, 0);
@@ -349,7 +364,10 @@ QWidget *FirewallPage::buildLocationPanel(const QString &title,
     ++r;
 
     grid->addWidget(Win7::bodyLabel("Notification state:"), r, 0);
-    grid->addWidget(Win7::bodyLabel(notifyText(info.logLevel)), r, 1);
+    grid->addWidget(Win7::bodyLabel(
+        info.backend == FirewallBackend::Kind::Firewalld
+            ? QStringLiteral("Managed by firewalld")
+            : notifyText(info.logLevel)), r, 1);
     ++r;
 
     bodyV->addLayout(grid);
@@ -379,7 +397,10 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
     : QWidget(parent)
 {
     const FwInfo info = gatherInfo();
-    const FirewallBackendStatus backend = probeFirewallBackend();
+    const FirewallBackendStatus backend = info.backend == FirewallBackend::Kind::Ufw
+        ? probeFirewallBackend() : FirewallBackendStatus{
+            info.backend == FirewallBackend::Kind::Firewalld, false,
+            QStringLiteral("No supported firewall backend is installed.")};
 
     // Windows 7 lays the content out at a fixed width and leaves the rest of
     // the window blank on the right rather than stretching to fill it.
@@ -422,18 +443,25 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
     if (!backend.ready)
         toggle->setToolTip(backend.message);
     connect(toggle, &QPushButton::clicked, this, [this, info]() {
+        if (info.backend == FirewallBackend::Kind::Firewalld) {
+            setFirewalldEnabled(!info.enabled);
+            return;
+        }
         const QStringList args = info.enabled
             ? QStringList{"disable"} : QStringList{"--force", "enable"};
         runUfw(args, info.enabled ? "The firewall was turned off."
-                                  : "The firewall was turned on.");
+                                  : "The firewall was turned on.", !info.enabled);
     });
     controls->addWidget(toggle);
 
     auto *allow = new QPushButton("Allow a port or service…");
     allow->setObjectName("firewall-allow-service");
-    allow->setEnabled(backend.ready);
-    if (!backend.ready)
-        allow->setToolTip(backend.message);
+    allow->setEnabled(backend.ready && info.backend == FirewallBackend::Kind::Ufw);
+    if (!allow->isEnabled())
+        allow->setToolTip(info.backend == FirewallBackend::Kind::Firewalld
+            ? QStringLiteral("Firewalld rule editing is not available in this "
+                             "Aero7 version. Use firewall-cmd for advanced rules.")
+            : backend.message);
     connect(allow, &QPushButton::clicked, this, [this]() {
         bool ok = false;
         const QString rule = QInputDialog::getText(
@@ -448,18 +476,22 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
 
     auto *notifications = new QPushButton("Notification settings…");
     notifications->setObjectName("firewall-notification-settings");
-    notifications->setEnabled(backend.ready);
-    if (!backend.ready)
-        notifications->setToolTip(backend.message);
+    notifications->setEnabled(backend.ready && info.backend == FirewallBackend::Kind::Ufw);
+    if (!notifications->isEnabled())
+        notifications->setToolTip(info.backend == FirewallBackend::Kind::Firewalld
+            ? QStringLiteral("UFW logging settings do not apply to firewalld.")
+            : backend.message);
     connect(notifications, &QPushButton::clicked, this,
             [this, info]() { showNotificationSettings(info.logLevel); });
     controls->addWidget(notifications);
 
     auto *reset = new QPushButton("Restore defaults…");
     reset->setObjectName("firewall-restore-defaults");
-    reset->setEnabled(backend.ready);
-    if (!backend.ready)
-        reset->setToolTip(backend.message);
+    reset->setEnabled(backend.ready && info.backend == FirewallBackend::Kind::Ufw);
+    if (!reset->isEnabled())
+        reset->setToolTip(info.backend == FirewallBackend::Kind::Firewalld
+            ? QStringLiteral("Restoring UFW rules does not apply to firewalld.")
+            : backend.message);
     connect(reset, &QPushButton::clicked, this, [this]() {
         if (QMessageBox::warning(
                 this, "Restore firewall defaults",
@@ -543,7 +575,8 @@ void FirewallPage::showNotificationSettings(const QString &currentLogLevel)
 }
 
 void FirewallPage::runUfw(const QStringList &arguments,
-                          const QString &successMessage)
+                          const QString &successMessage,
+                          std::optional<bool> expectedEnabled)
 {
     if (QStandardPaths::findExecutable(QStringLiteral("pkexec")).isEmpty()
         || QStandardPaths::findExecutable(QStringLiteral("ufw")).isEmpty()) {
@@ -570,16 +603,72 @@ void FirewallPage::runUfw(const QStringList &arguments,
         }
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, process, successMessage](int code, QProcess::ExitStatus) {
+            this, [this, process, successMessage, expectedEnabled]
+            (int code, QProcess::ExitStatus exitStatus) {
         const QString error = QString::fromUtf8(process->readAllStandardError()).trimmed();
-        if (code == 0) {
+        const bool observedEnabled = readConfField(
+            QStringLiteral("/etc/ufw/ufw.conf"), QStringLiteral("ENABLED"))
+            .compare(QStringLiteral("yes"), Qt::CaseInsensitive) == 0;
+        if (exitStatus == QProcess::NormalExit && code == 0
+            && (!expectedEnabled || observedEnabled == *expectedEnabled)) {
             QMessageBox::information(this, "Firewall", successMessage);
             emit refreshRequested();
-        } else if (code != 126 && code != 127) {
+        } else if (code == 126 || code == 127) {
             QMessageBox::warning(this, "Firewall",
-                error.isEmpty() ? "The firewall command failed." : error);
+                                 "Authentication was cancelled or denied."
+                                 " The firewall was not changed.");
+        } else {
+            QMessageBox::warning(this, "Firewall",
+                error.isEmpty() ? "The firewall command failed or its state "
+                                  "did not match the requested setting." : error);
         }
         process->deleteLater();
     });
     process->start("pkexec", QStringList{"ufw"} + arguments);
+}
+
+void FirewallPage::setFirewalldEnabled(bool enabled)
+{
+    if (QStandardPaths::findExecutable(QStringLiteral("pkexec")).isEmpty()
+        || QStandardPaths::findExecutable(QStringLiteral("systemctl")).isEmpty()) {
+        QMessageBox::warning(this, "Firewall",
+                             "Changing firewalld requires pkexec and systemctl.");
+        return;
+    }
+
+    auto *process = new QProcess(this);
+    connect(process, &QProcess::errorOccurred, this,
+            [this, process](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            QMessageBox::warning(this, "Firewall",
+                                 "The firewall command could not be started.");
+            process->deleteLater();
+        }
+    });
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, process, enabled](int code, QProcess::ExitStatus exitStatus) {
+        const QString error = QString::fromUtf8(process->readAllStandardError()).trimmed();
+        const bool observed = FirewallBackend::serviceActive(
+            QStringLiteral("firewalld.service"));
+        if (exitStatus == QProcess::NormalExit && code == 0
+            && observed == enabled) {
+            QMessageBox::information(this, "Firewall", enabled
+                ? "The firewall was turned on."
+                : "The firewall was turned off.");
+            emit refreshRequested();
+        } else if (code == 126 || code == 127) {
+            QMessageBox::warning(this, "Firewall",
+                                 "Authentication was cancelled or denied."
+                                 " The firewall was not changed.");
+        } else {
+            QMessageBox::warning(this, "Firewall", error.isEmpty()
+                ? "The firewalld state did not match the requested setting."
+                : error);
+        }
+        process->deleteLater();
+    });
+    process->start(QStringLiteral("pkexec"),
+                   {QStringLiteral("systemctl"),
+                    enabled ? QStringLiteral("enable") : QStringLiteral("disable"),
+                    QStringLiteral("--now"), QStringLiteral("firewalld.service")});
 }

@@ -3,21 +3,21 @@
 #include <QWidget>
 #include <QString>
 #include <QStringList>
+#include <optional>
 #include "PageId.h"
+#include "FirewallBackend.h"
 
 class QScrollArea;
 class QVBoxLayout;
 
 // The "Linux Firewall" detail page.
 //
-// KDE's System Settings "Firewall" module (plasma-firewall) drives ufw on this
-// machine, so this page mirrors exactly what that module shows by reading the
-// same world-readable ufw configuration it does:
+// Supports firewalld on fresh installations and preserves UFW on existing
+// installations. UFW state comes from its world-readable configuration:
 //   * /etc/ufw/ufw.conf      -> ENABLED (firewall on/off), LOGLEVEL (notifications)
 //   * /etc/default/ufw       -> DEFAULT_INPUT_POLICY / DEFAULT_OUTPUT_POLICY
 //   * /etc/ufw/user.rules     -> the count of configured allow/deny rules
-// Read-only state comes from those files. Explicit, confirmed changes run ufw
-// through polkit, and the page refreshes only after a successful command.
+// Explicit changes run through polkit and the page refreshes after readback.
 class FirewallPage : public QWidget {
     Q_OBJECT
 
@@ -36,6 +36,8 @@ private:
     // files that KDE's firewall module also consults.
     struct FwInfo {
         bool    enabled = false;       // ufw.conf ENABLED=yes
+        FirewallBackend::Kind backend = FirewallBackend::Kind::None;
+        QString backendName;
         QString inputPolicy;           // DEFAULT_INPUT_POLICY ("DROP"/"ACCEPT"/"REJECT")
         QString outputPolicy;          // DEFAULT_OUTPUT_POLICY
         QString logLevel;              // ufw.conf LOGLEVEL ("off".."high")
@@ -54,5 +56,7 @@ private:
                                 bool expanded,
                                 const FwInfo &info);
     void showNotificationSettings(const QString &currentLogLevel);
-    void runUfw(const QStringList &arguments, const QString &successMessage);
+    void runUfw(const QStringList &arguments, const QString &successMessage,
+                std::optional<bool> expectedEnabled = std::nullopt);
+    void setFirewalldEnabled(bool enabled);
 };
