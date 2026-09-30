@@ -325,6 +325,25 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
 
+    add_executable(taskbar-start-menu-apply-test
+        tests/TaskbarStartMenuApplyTest.cpp
+        src/ui/pages/TaskbarStartMenuPage.h
+        src/ui/pages/TaskbarStartMenuPage.cpp
+    )
+    target_include_directories(taskbar-start-menu-apply-test PRIVATE
+        src/ui
+        src/ui/pages
+    )
+    target_link_libraries(taskbar-start-menu-apply-test PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Aero7Qt::Aero7Qt
+    )
+    add_test(NAME taskbar-start-menu-apply-test COMMAND taskbar-start-menu-apply-test)
+    set_tests_properties(taskbar-start-menu-apply-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp
         resources/icons.qrc

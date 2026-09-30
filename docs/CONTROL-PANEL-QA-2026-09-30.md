@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Automated tests | 17 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection and Folder Options save/indexer success and failure. |
+| Automated tests | 18 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, and Taskbar/Start Menu save/readback failures. |
 
 ## VM evidence
 
@@ -35,6 +35,13 @@ launched without a Control Panel error. The VM terminated before a screenshot
 of that particular module could be captured, so visual verification of those
 five module windows remains pending.
 
+A fresh disposable VM snapshot also ran `taskbar-start-menu-apply-test` against
+its real Plasma session, with the real `qdbus6` and Aero7 panel widgets. The
+page loaded the installed taskbar/Start values, applied them without changing
+the selected values, and read back all requested fields; the integration check
+exited 0. The same check passed on the development host. This verifies a
+no-op apply/readback path, not every individual visual behavior of the controls.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -48,6 +55,9 @@ be called a complete settings audit until those checks pass.
 Folder Options now reports whether its configuration files were saved and
 whether the Baloo indexer actually accepted the requested state. It no longer
 reports blanket success when the helper is missing or exits with an error.
+Taskbar and Start Menu now refuse to claim success when the Aero7 panel,
+SevenTasks, or SevenStart component is absent, when Plasma rejects the command,
+or when its readback does not match the requested values.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

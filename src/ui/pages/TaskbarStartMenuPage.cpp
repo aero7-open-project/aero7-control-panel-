@@ -36,6 +36,28 @@ QString boolLiteral(bool value)
     return value ? QStringLiteral("true") : QStringLiteral("false");
 }
 
+QString readStateScript()
+{
+    return QStringLiteral(
+        "var state={panel:false,tasks:false,start:false,locked:false,hiding:'none',"
+        "height:40,grouping:1,onlyWhenFull:false,labels:false,previews:true,"
+        "recents:true,jumpLists:true,rows:8};"
+        "for(var p of panels()){if(p.type!=='io.gitgud.wackyideas.panel')continue;"
+        "state.panel=true;state.locked=!!p.locked;state.hiding=String(p.hiding);"
+        "state.height=Number(p.height);"
+        "for(var w of p.widgets()){w.currentConfigGroup=['General'];"
+        "if(w.type==='io.gitgud.wackyideas.seventasks'){"
+        "state.tasks=true;state.grouping=Number(w.readConfig('groupingStrategy',1));"
+        "state.onlyWhenFull=!!w.readConfig('onlyGroupWhenFull',false);"
+        "state.labels=!!w.readConfig('showLabels',false);"
+        "state.previews=!!w.readConfig('showPreviews',true);"
+        "state.jumpLists=!w.readConfig('disableJumplists',false);"
+        "}else if(w.type==='io.gitgud.wackyideas.SevenStart'){"
+        "state.start=true;state.recents=!!w.readConfig('showRecentsView',true);"
+        "state.rows=Number(w.readConfig('numberRows',8));}}break;}"
+        "print(JSON.stringify(state));");
+}
+
 } // namespace
 
 TaskbarStartMenuPage::TaskbarStartMenuPage(QScrollArea *sidebar,
@@ -126,9 +148,11 @@ TaskbarStartMenuPage::TaskbarStartMenuPage(QScrollArea *sidebar,
 
     auto *footer = new QHBoxLayout;
     m_status = new QLabel;
+    m_status->setObjectName(QStringLiteral("taskbarStatus"));
     m_status->setStyleSheet(QStringLiteral("color: #4B4B4B;"));
     footer->addWidget(m_status, 1);
     auto *apply = new QPushButton(QStringLiteral("Apply"));
+    apply->setObjectName(QStringLiteral("taskbarApply"));
     connect(apply, &QPushButton::clicked, this,
             &TaskbarStartMenuPage::applyState);
     footer->addWidget(apply);
@@ -158,26 +182,8 @@ bool TaskbarStartMenuPage::evaluateScript(const QString &script,
 
 void TaskbarStartMenuPage::loadState()
 {
-    const QString script = QStringLiteral(
-        "var state={locked:false,hiding:'none',height:40,grouping:1,"
-        "onlyWhenFull:false,labels:false,previews:true,recents:true,"
-        "jumpLists:true,rows:8};"
-        "for(var p of panels()){if(p.type!=='io.gitgud.wackyideas.panel')continue;"
-        "state.locked=!!p.locked;state.hiding=String(p.hiding);state.height=p.height;"
-        "for(var w of p.widgets()){w.currentConfigGroup=['General'];"
-        "if(w.type==='io.gitgud.wackyideas.seventasks'){"
-        "state.grouping=Number(w.readConfig('groupingStrategy',1));"
-        "state.onlyWhenFull=!!w.readConfig('onlyGroupWhenFull',false);"
-        "state.labels=!!w.readConfig('showLabels',false);"
-        "state.previews=!!w.readConfig('showPreviews',true);"
-        "state.jumpLists=!w.readConfig('disableJumplists',false);"
-        "}else if(w.type==='io.gitgud.wackyideas.SevenStart'){"
-        "state.recents=!!w.readConfig('showRecentsView',true);"
-        "state.rows=Number(w.readConfig('numberRows',8));}}break;}"
-        "print(JSON.stringify(state));");
-
     QString output;
-    if (!evaluateScript(script, &output)) {
+    if (!evaluateScript(readStateScript(), &output)) {
         m_status->setText(QStringLiteral("AeroShell is not available."));
         return;
     }
@@ -187,6 +193,13 @@ void TaskbarStartMenuPage::loadState()
         return;
     }
     const QJsonObject state = document.object();
+    if (!state.value(QStringLiteral("panel")).toBool()
+        || !state.value(QStringLiteral("tasks")).toBool()
+        || !state.value(QStringLiteral("start")).toBool()) {
+        m_status->setText(QStringLiteral(
+            "The Aero7 taskbar or Start menu component is not available."));
+        return;
+    }
     m_lockTaskbar->setChecked(state.value(QStringLiteral("locked")).toBool());
     m_autoHide->setChecked(
         state.value(QStringLiteral("hiding")).toString() == QStringLiteral("autohide"));
@@ -211,18 +224,23 @@ void TaskbarStartMenuPage::applyState()
     const bool labels = choice != 0;
 
     const QString script = QStringLiteral(
+        "var panel=null,tasks=null,start=null;"
         "for(var p of panels()){if(p.type!=='io.gitgud.wackyideas.panel')continue;"
-        "p.locked=%1;p.hiding='%2';p.height=%3;"
-        "for(var w of p.widgets()){w.currentConfigGroup=['General'];"
-        "if(w.type==='io.gitgud.wackyideas.seventasks'){"
-        "w.writeConfig('groupingStrategy',%4);"
-        "w.writeConfig('onlyGroupWhenFull',%5);"
-        "w.writeConfig('showLabels',%6);"
-        "w.writeConfig('showPreviews',%7);"
-        "w.writeConfig('disableJumplists',%8);"
-        "}else if(w.type==='io.gitgud.wackyideas.SevenStart'){"
-        "w.writeConfig('showRecentsView',%9);"
-        "w.writeConfig('numberRows',%10);}}}")
+        "panel=p;for(var w of p.widgets()){"
+        "if(w.type==='io.gitgud.wackyideas.seventasks')tasks=w;"
+        "else if(w.type==='io.gitgud.wackyideas.SevenStart')start=w;}break;}"
+        "if(panel&&tasks&&start){"
+        "panel.locked=%1;panel.hiding='%2';panel.height=%3;"
+        "tasks.currentConfigGroup=['General'];"
+        "tasks.writeConfig('groupingStrategy',%4);"
+        "tasks.writeConfig('onlyGroupWhenFull',%5);"
+        "tasks.writeConfig('showLabels',%6);"
+        "tasks.writeConfig('showPreviews',%7);"
+        "tasks.writeConfig('disableJumplists',%8);"
+        "start.currentConfigGroup=['General'];"
+        "start.writeConfig('showRecentsView',%9);"
+        "start.writeConfig('numberRows',%10);}"
+        "print(JSON.stringify({panel:!!panel,tasks:!!tasks,start:!!start}));")
         .arg(boolLiteral(m_lockTaskbar->isChecked()),
              m_autoHide->isChecked() ? QStringLiteral("autohide")
                                      : QStringLiteral("none"))
@@ -234,8 +252,44 @@ void TaskbarStartMenuPage::applyState()
              boolLiteral(m_recentPrograms->isChecked()))
         .arg(m_programCount->value());
 
-    if (!evaluateScript(script)) {
+    QString result;
+    if (!evaluateScript(script, &result)) {
         m_status->setText(QStringLiteral("Could not apply AeroShell settings."));
+        return;
+    }
+    const QJsonDocument applied = QJsonDocument::fromJson(result.toUtf8());
+    if (!applied.isObject()
+        || !applied.object().value(QStringLiteral("panel")).toBool()
+        || !applied.object().value(QStringLiteral("tasks")).toBool()
+        || !applied.object().value(QStringLiteral("start")).toBool()) {
+        m_status->setText(QStringLiteral(
+            "The Aero7 taskbar or Start menu component is missing; nothing was applied."));
+        return;
+    }
+
+    QString readback;
+    if (!evaluateScript(readStateScript(), &readback)) {
+        m_status->setText(QStringLiteral("AeroShell did not confirm the saved settings."));
+        return;
+    }
+    const QJsonDocument verified = QJsonDocument::fromJson(readback.toUtf8());
+    const QJsonObject actual = verified.object();
+    if (!verified.isObject()
+        || !actual.value(QStringLiteral("panel")).toBool()
+        || !actual.value(QStringLiteral("tasks")).toBool()
+        || !actual.value(QStringLiteral("start")).toBool()
+        || actual.value(QStringLiteral("locked")).toBool() != m_lockTaskbar->isChecked()
+        || actual.value(QStringLiteral("hiding")).toString() !=
+           (m_autoHide->isChecked() ? QStringLiteral("autohide") : QStringLiteral("none"))
+        || actual.value(QStringLiteral("height")).toInt() != (m_smallIcons->isChecked() ? 30 : 40)
+        || actual.value(QStringLiteral("grouping")).toInt() != grouping
+        || actual.value(QStringLiteral("onlyWhenFull")).toBool() != onlyWhenFull
+        || actual.value(QStringLiteral("labels")).toBool() != labels
+        || actual.value(QStringLiteral("previews")).toBool() != m_previews->isChecked()
+        || actual.value(QStringLiteral("recents")).toBool() != m_recentPrograms->isChecked()
+        || actual.value(QStringLiteral("jumpLists")).toBool() != m_jumpLists->isChecked()
+        || actual.value(QStringLiteral("rows")).toInt() != m_programCount->value()) {
+        m_status->setText(QStringLiteral("AeroShell did not retain every requested setting."));
         return;
     }
     m_status->setText(QStringLiteral("Taskbar and Start menu settings applied."));
