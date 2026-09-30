@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Automated tests | 21 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, and firewall-backend selection. |
+| Automated tests | 22 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, firewall-backend selection, and Linux Update command failures. |
 
 ## VM evidence
 
@@ -85,6 +85,18 @@ and restore-defaults controls are visibly unavailable rather than issuing
 UFW commands against the wrong backend. The tray Action Center now uses the
 same detector as the Control Panel page.
 
+Linux Update was audited with controlled fake `checkupdates`, `yay`, and
+`pkexec` commands on the Aero7 development host. Missing tools, repository
+errors, AUR errors, and installer start/exit failures now leave an error state
+with details instead of claiming the computer is up to date or permanently
+showing Downloading. Only a successful complete check records a successful
+check timestamp. The test also confirmed that selecting only part of the repository
+updates is stopped before pacman; Arch requires a full repository upgrade.
+The unsafe fallback `pacman -Sy` check and automatic recursive deletion of
+selected yay cache directories were removed. No real packages were installed
+in this QA run, so full pacman and AUR installation still require VM
+acceptance with disposable package sources and a graphical Polkit session.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -115,6 +127,12 @@ before claiming success; its Polkit path has not yet been exercised in the
 graphical VM session. The existing UFW toggle likewise rereads `ufw.conf`
 before claiming success. Firewalld rule editing still needs a working Aero7 UI or
 an installed compatible settings module.
+Linux Update now requires `checkupdates` from pacman-contrib for a safe
+repository check. If it is absent or fails, the page reports an error rather
+than presenting stale package data as a successful check. Selective repository
+updates are blocked to avoid an unsupported partial Arch upgrade; selected
+AUR updates remain optional. The Change settings sidebar entry and actual
+package-install path remain incomplete acceptance items.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

@@ -4,7 +4,6 @@
 #include "Branding.h"
 
 #include <QScrollArea>
-#include <QMessageBox>
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -25,8 +24,9 @@
 #include <QDateTime>
 #include <QLocale>
 #include <QSettings>
-#include <QDir>
 #include <QRegularExpression>
+#include <QStandardPaths>
+#include <QDebug>
 
 QList<SidebarLink> LinuxUpdatePage::sidebarLinks()
 {
@@ -109,6 +109,7 @@ LinuxUpdatePage::LinuxUpdatePage(QScrollArea *sidebar, QWidget *parent)
     textCol->setSpacing(4);
 
     m_titleLabel = new QLabel;
+    m_titleLabel->setObjectName(QStringLiteral("updateStatusTitle"));
     {
         QFont f = m_titleLabel->font();
         f.setPointSize(11);
@@ -191,6 +192,9 @@ LinuxUpdatePage::LinuxUpdatePage(QScrollArea *sidebar, QWidget *parent)
     textCol->insertWidget(1, m_progressBar);
 
     m_progressText = new QLabel;
+    m_progressText->setObjectName(QStringLiteral("updateErrorDetails"));
+    m_progressText->setTextFormat(Qt::PlainText);
+    m_progressText->setWordWrap(true);
     {
         QFont f = m_progressText->font();
         f.setPointSize(8);
@@ -210,6 +214,7 @@ LinuxUpdatePage::LinuxUpdatePage(QScrollArea *sidebar, QWidget *parent)
     btnRow->addStretch(1);
 
     m_installBtn = new QPushButton("Install updates");
+    m_installBtn->setObjectName(QStringLiteral("updateInstallButton"));
     m_installBtn->setStyleSheet("QPushButton { padding-left: 12px; padding-right: 12px; }");
     connect(m_installBtn, &QPushButton::clicked, this, &LinuxUpdatePage::installUpdates);
     btnRow->addWidget(m_installBtn);
@@ -331,6 +336,9 @@ void LinuxUpdatePage::applyStatusBorder(const QString &leftColor, const QString 
 // then re-shows only the pieces it needs.
 void LinuxUpdatePage::resetStatusWidgets()
 {
+    m_titleLabel->setToolTip({});
+    m_subLabel->setToolTip({});
+    m_progressText->setToolTip({});
     m_subRowWidget->setMaximumHeight(QWIDGETSIZE_MAX);
     m_subRowWidget->show();
     m_subLabel->show();
@@ -370,6 +378,19 @@ void LinuxUpdatePage::setNoUpdatesState()
     m_iconLabel->setPixmap(themeIcon({"security-high", "emblem-default", "dialog-ok-apply"}).pixmap(48, 48));
     m_titleLabel->setText(Branding::brand("Linux is up to date"));
     m_subLabel->setText("There are no available updates for your computer.");
+}
+
+void LinuxUpdatePage::setCheckFailedState(const QString &detail)
+{
+    applyStatusBorder("#CC3300");
+    resetStatusWidgets();
+    m_iconLabel->setPixmap(themeIcon({"dialog-error", "security-low"}).pixmap(48, 48));
+    m_titleLabel->setText("Updates could not be checked");
+    m_subLabel->setText("The update check failed. Try again after checking your "
+                        "connection or package sources.");
+    m_titleLabel->setToolTip(detail);
+    m_subLabel->setToolTip(detail);
+    qWarning().noquote() << "Aero7 update check failed:" << detail;
 }
 
 void LinuxUpdatePage::setUpdatesAvailableState()
@@ -466,6 +487,23 @@ void LinuxUpdatePage::setDoneState(bool ok)
     } else {
         m_subLabel->setText("Check your internet connection and try again, or run pacman -Syu in a terminal.");
     }
+}
+
+void LinuxUpdatePage::recordInstallFailure(const QString &detail)
+{
+    m_lastInstall = QDateTime::currentDateTime();
+    m_everInstalled = true;
+    m_lastInstallOk = false;
+    updateInfoRows();
+    setDoneState(false);
+    const QString message = detail.trimmed().isEmpty()
+        ? QStringLiteral("The update command did not complete successfully.")
+        : detail.trimmed();
+    m_progressText->setText(message.size() > 600
+        ? QStringLiteral("...") + message.right(600) : message);
+    m_progressText->setToolTip(message.right(2000));
+    m_progressText->show();
+    qWarning().noquote() << "Aero7 update installation failed:" << message.right(2000);
 }
 
 
@@ -925,6 +963,8 @@ void LinuxUpdatePage::fetchPackageSizes()
         args << pkg.name;
 
     const QString sizeCmd = m_yayAvailable ? QString("yay") : QString("pacman");
+    if (QStandardPaths::findExecutable(sizeCmd).isEmpty())
+        return;
 
     auto *proc = new QProcess(this);
     proc->setProcessChannelMode(QProcess::MergedChannels);
@@ -1010,7 +1050,15 @@ void LinuxUpdatePage::checkForUpdates()
         m_proc = nullptr;
     }
     m_pkgs.clear();
+    m_checkWarning.clear();
     setCheckingState();
+
+    if (QStandardPaths::findExecutable(QStringLiteral("checkupdates")).isEmpty()) {
+        setCheckFailedState(QStringLiteral(
+            "The checkupdates tool is missing. Install pacman-contrib to enable "
+            "safe update checks without modifying the live pacman database."));
+        return;
+    }
 
     m_proc = new QProcess(this);
     m_proc->setProcessChannelMode(QProcess::MergedChannels);
@@ -1019,7 +1067,7 @@ void LinuxUpdatePage::checkForUpdates()
         if (err == QProcess::FailedToStart) {
             m_proc->deleteLater();
             m_proc = nullptr;
-            runFallbackCheck();
+            setCheckFailedState(QStringLiteral("checkupdates could not start."));
         }
     });
     connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
@@ -1028,49 +1076,13 @@ void LinuxUpdatePage::checkForUpdates()
     m_proc->start("checkupdates", {});
 }
 
-void LinuxUpdatePage::runFallbackCheck()
-{
-    // checkupdates is unavailable, so we must sync the DB ourselves.
-    // pacman -Sy writes to /var/lib/pacman, needs root via pkexec.
-    m_proc = new QProcess(this);
-    m_proc->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus) {
-        const QString errOut =
-            QString::fromUtf8(m_proc->readAllStandardError()).trimmed();
-        m_proc->deleteLater();
-        m_proc = nullptr;
-
-        if (exitCode != 0) {
-            m_lastCheck = QDateTime::currentDateTime();
-            updateInfoRows();
-            setNoUpdatesState();
-            if (!errOut.isEmpty())
-                QMessageBox::warning(this, "Update check failed",
-                    QString("Could not synchronize the package database:\n\n%1")
-                    .arg(errOut.toHtmlEscaped()));
-            return;
-        }
-
-        // DB is now fresh, query upgradeable packages (no root needed).
-        m_proc = new QProcess(this);
-        m_proc->setProcessChannelMode(QProcess::MergedChannels);
-        connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                this, [this](int, QProcess::ExitStatus) {
-            m_lastCheck = QDateTime::currentDateTime();
-            parseUpdateList(m_proc->readAll(), false);
-            m_proc->deleteLater();
-            m_proc = nullptr;
-            updateInfoRows();
-            runYayCheck();
-        });
-        m_proc->start("pacman", {"-Qu"});
-    });
-    m_proc->start("pkexec", {"pacman", "-Sy"});
-}
-
 void LinuxUpdatePage::runYayCheck()
 {
+    if (QStandardPaths::findExecutable(QStringLiteral("yay")).isEmpty()) {
+        m_yayAvailable = false;
+        finishCheck();
+        return;
+    }
     m_proc = new QProcess(this);
     m_proc->setProcessChannelMode(QProcess::MergedChannels);
     connect(m_proc, &QProcess::errorOccurred, this, [this](QProcess::ProcessError err) {
@@ -1078,16 +1090,24 @@ void LinuxUpdatePage::runYayCheck()
         m_yayAvailable = false;
         m_proc->deleteLater();
         m_proc = nullptr;
+        m_checkWarning = QStringLiteral("The AUR update checker could not start.");
         finishCheck();
     });
     connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus) {
-        m_yayAvailable = true;
+            this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+        if (!m_proc) return;
         QByteArray out = m_proc->readAll();
         m_proc->deleteLater();
         m_proc = nullptr;
-        if (exitCode == 0)
+        m_yayAvailable = exitStatus == QProcess::NormalExit && exitCode == 0;
+        if (m_yayAvailable)
             parseUpdateList(out, true);
+        else {
+            m_checkWarning = QString::fromUtf8(out).trimmed();
+            if (m_checkWarning.isEmpty())
+                m_checkWarning = QStringLiteral("The AUR update checker exited with status %1.")
+                                     .arg(exitCode);
+        }
         finishCheck();
     });
     m_proc->start("yay", {"-Qua"});
@@ -1095,23 +1115,44 @@ void LinuxUpdatePage::runYayCheck()
 
 void LinuxUpdatePage::finishCheck()
 {
+    if (!m_checkWarning.isEmpty()) {
+        if (m_pkgs.isEmpty()) {
+            setCheckFailedState(m_checkWarning);
+            return;
+        }
+        setUpdatesAvailableState();
+        m_progressText->setText("AUR updates could not be checked; repository "
+                                "results are shown. See the tooltip for details.");
+        m_progressText->setToolTip(m_checkWarning);
+        m_progressText->show();
+        qWarning().noquote() << "Aero7 AUR update check failed:" << m_checkWarning;
+        return;
+    }
+
+    m_lastCheck = QDateTime::currentDateTime();
+    updateInfoRows();
     if (m_pkgs.isEmpty()) setNoUpdatesState();
     else setUpdatesAvailableState();
 }
 
-void LinuxUpdatePage::onCheckFinished(int exitCode, QProcess::ExitStatus)
+void LinuxUpdatePage::onCheckFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
     if (!m_proc) return;
 
-    m_lastCheck = QDateTime::currentDateTime();
     QByteArray out = m_proc->readAll();
     m_proc->deleteLater();
     m_proc = nullptr;
 
     // checkupdates exit 2 = up to date; exit 0 = updates found; exit 1 = error
-    parseUpdateList((exitCode == 2) ? QByteArray{} : out, false);
+    if (exitStatus != QProcess::NormalExit || (exitCode != 0 && exitCode != 2)) {
+        const QString detail = QString::fromUtf8(out).trimmed();
+        setCheckFailedState(detail.isEmpty()
+            ? QStringLiteral("checkupdates exited with status %1.").arg(exitCode)
+            : detail);
+        return;
+    }
 
-    updateInfoRows();
+    parseUpdateList((exitCode == 2) ? QByteArray{} : out, false);
     runYayCheck();
 }
 
@@ -1149,9 +1190,22 @@ void LinuxUpdatePage::installUpdates()
         if (!m_selectedAurPkgs.isEmpty() && m_yayAvailable) {
             setDownloadingState();
             startYayInstall();
-        } else {
-            setDoneState(true);
+        } else if (!m_selectedAurPkgs.isEmpty()) {
+            recordInstallFailure(QStringLiteral(
+                "The selected AUR updates were not installed because yay is unavailable."));
         }
+        return;
+    }
+
+    // Arch does not support a partial repository upgrade. Do not turn a
+    // Windows-style selection into `pacman -Sy <subset>`, which can mix new
+    // packages with an old system. Keep the selection open for correction.
+    if (repoPkgs.size() != totalRepo) {
+        m_progressText->setText(
+            "Arch requires a full repository upgrade. Select every important "
+            "repository update before installing; optional AUR updates may "
+            "still be selected separately.");
+        m_progressText->show();
         return;
     }
 
@@ -1160,19 +1214,20 @@ void LinuxUpdatePage::installUpdates()
     m_proc = new QProcess(this);
     m_proc->setProcessChannelMode(QProcess::MergedChannels);
     connect(m_proc, &QProcess::readyRead, this, &LinuxUpdatePage::onInstallReadyRead);
+    connect(m_proc, &QProcess::errorOccurred, this,
+            [this](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart || !m_proc)
+            return;
+        m_proc->deleteLater();
+        m_proc = nullptr;
+        recordInstallFailure(QStringLiteral(
+            "The authenticated package installer could not start. Check that "
+            "pkexec and pacman are installed."));
+    });
     connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &LinuxUpdatePage::onInstallFinished);
 
-    // When every repository update is selected, do a normal full upgrade
-    // (-Syu) -- the safest path that avoids a partial upgrade. When only a
-    // subset is selected, target just those packages with -S; the leading -y
-    // refreshes the sync database so the latest versions are installed.
-    QStringList pacArgs = { "pacman", "--color", "never" };
-    if (repoPkgs.size() == totalRepo) {
-        pacArgs << "-Syu" << "--noconfirm";
-    } else {
-        pacArgs << "-Sy" << "--noconfirm" << repoPkgs;
-    }
+    QStringList pacArgs = { "pacman", "--color", "never", "-Syu", "--noconfirm" };
     m_proc->start("pkexec", pacArgs);
 }
 
@@ -1268,13 +1323,14 @@ void LinuxUpdatePage::onInstallReadyRead()
     }
 }
 
-void LinuxUpdatePage::onInstallFinished(int exitCode, QProcess::ExitStatus)
+void LinuxUpdatePage::onInstallFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    bool pacmanOk = (exitCode == 0);
-
-    const QString errOut = m_proc
-        ? QString::fromUtf8(m_proc->readAllStandardError()).trimmed()
-        : QString();
+    if (!m_proc) return;
+    const bool pacmanOk = exitStatus == QProcess::NormalExit && exitCode == 0;
+    // The process merges stdout and stderr, so readAllStandardError() is
+    // always empty. Keep the actual output tail for an actionable error.
+    m_installBuf += QString::fromUtf8(m_proc->readAll());
+    const QString outputTail = m_installBuf.right(2000).trimmed();
 
     m_proc->deleteLater();
     m_proc = nullptr;
@@ -1284,49 +1340,62 @@ void LinuxUpdatePage::onInstallFinished(int exitCode, QProcess::ExitStatus)
         return;
     }
 
+    if (!pacmanOk) {
+        recordInstallFailure(outputTail.isEmpty()
+            ? QStringLiteral("pacman exited with status %1.").arg(exitCode)
+            : outputTail);
+        return;
+    }
+    if (!m_selectedAurPkgs.isEmpty()) {
+        recordInstallFailure(QStringLiteral(
+            "Repository updates completed, but selected AUR updates were not "
+            "installed because yay is unavailable."));
+        return;
+    }
+
     m_lastInstall   = QDateTime::currentDateTime();
     m_everInstalled = true;
-    m_lastInstallOk = pacmanOk;
+    m_lastInstallOk = true;
     updateInfoRows();
-    setDoneState(m_lastInstallOk);
-
-    if (!m_lastInstallOk && !errOut.isEmpty()) {
-        QMessageBox::warning(this, "Update failed",
-            QString("pacman reported an error:\n\n%1").arg(errOut.toHtmlEscaped()));
-    }
+    setDoneState(true);
 }
 
 void LinuxUpdatePage::startYayInstall()
 {
-    // Remove stale build caches so git sources are re-cloned fresh
-    const QString yayCache = QDir::homePath() + "/.cache/yay/";
-    for (const QString &pkg : m_selectedAurPkgs)
-        QDir(yayCache + pkg).removeRecursively();
-
     m_installBuf.clear();
     m_inInstallPhase = false;
 
     m_proc = new QProcess(this);
     m_proc->setProcessChannelMode(QProcess::MergedChannels);
     connect(m_proc, &QProcess::readyRead, this, &LinuxUpdatePage::onInstallReadyRead);
-    connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus) {
-        // Drain any remaining output not yet consumed by onInstallReadyRead
-        m_installBuf += QString::fromUtf8(m_proc->readAll());
-        m_lastInstall   = QDateTime::currentDateTime();
-        m_everInstalled = true;
-        m_lastInstallOk = (exitCode == 0);
+    connect(m_proc, &QProcess::errorOccurred, this,
+            [this](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart || !m_proc)
+            return;
         m_proc->deleteLater();
         m_proc = nullptr;
-        updateInfoRows();
-        setDoneState(m_lastInstallOk);
-        if (!m_lastInstallOk) {
-            // Show the tail of yay output so the user can diagnose the failure
-            const QString tail = m_installBuf.length() > 2000
-                ? "..." + m_installBuf.right(2000) : m_installBuf;
-            QMessageBox::warning(this, "AUR update failed",
-                QString("yay reported an error:\n\n%1").arg(tail.toHtmlEscaped()));
+        recordInstallFailure(QStringLiteral("The AUR installer could not start."));
+    });
+    connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+        if (!m_proc) return;
+        // Drain any remaining output not yet consumed by onInstallReadyRead
+        m_installBuf += QString::fromUtf8(m_proc->readAll());
+        const QString outputTail = m_installBuf.right(2000).trimmed();
+        const bool yayOk = exitStatus == QProcess::NormalExit && exitCode == 0;
+        m_proc->deleteLater();
+        m_proc = nullptr;
+        if (!yayOk) {
+            recordInstallFailure(outputTail.isEmpty()
+                ? QStringLiteral("yay exited with status %1.").arg(exitCode)
+                : outputTail);
+            return;
         }
+        m_lastInstall   = QDateTime::currentDateTime();
+        m_everInstalled = true;
+        m_lastInstallOk = true;
+        updateInfoRows();
+        setDoneState(true);
     });
     QStringList yayArgs = {"--noconfirm", "--sudo", "pkexec", "--cleanafter"};
     if (m_selectedAurPkgs.isEmpty()) {

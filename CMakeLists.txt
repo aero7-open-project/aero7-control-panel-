@@ -395,6 +395,26 @@ if(BUILD_TESTING)
     target_link_libraries(firewall-backend-test PRIVATE Qt6::Test)
     add_test(NAME firewall-backend-test COMMAND firewall-backend-test)
 
+    add_executable(linux-update-check-test
+        resources/icons.qrc
+        tests/LinuxUpdateCheckTest.cpp
+        src/ui/pages/LinuxUpdatePage.h
+        src/ui/pages/LinuxUpdatePage.cpp
+        src/data/Branding.cpp
+    )
+    qt_add_resources(linux-update-check-test "aero7-linux-update-pack-icons-test"
+        PREFIX "/aero7/pack"
+        BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+        FILES ${AERO7_PACK_ICON_FILES})
+    target_include_directories(linux-update-check-test PRIVATE
+        src/ui src/ui/pages src/data)
+    target_link_libraries(linux-update-check-test PRIVATE
+        Qt6::Widgets Qt6::Test Qt6::Concurrent Aero7Qt::Aero7Qt)
+    add_test(NAME linux-update-check-test COMMAND linux-update-check-test)
+    set_tests_properties(linux-update-check-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp
         resources/icons.qrc

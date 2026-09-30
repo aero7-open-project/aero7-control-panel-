@@ -59,14 +59,15 @@ private:
     void setIdleState();
     void setCheckingState();
     void setNoUpdatesState();
+    void setCheckFailedState(const QString &detail);
     void setUpdatesAvailableState();
     void setDownloadingState();
     void setInstallingPhaseState();
     void setDoneState(bool ok);
+    void recordInstallFailure(const QString &detail);
     void resetStatusWidgets();   // hide every optional status-box widget
     void applyStatusBorder(const QString &leftColor, const QString &bg = "#FFFFFF");
     void parseUpdateList(const QByteArray &data, bool aur);
-    void runFallbackCheck();
     void runYayCheck();
     void finishCheck();
     void startYayInstall();
@@ -142,6 +143,7 @@ private:
     bool            m_everInstalled  = false;
     bool            m_lastInstallOk  = false;
     bool            m_yayAvailable   = false;
+    QString         m_checkWarning;
     QString         m_installBuf;
     bool            m_inInstallPhase = false;
 };
