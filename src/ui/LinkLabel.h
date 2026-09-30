@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QSet>
 #include <QWidget>
@@ -84,6 +85,12 @@ inline void launchDetached(QWidget *parent, const QStringList &cmd)
     if (QStandardPaths::findExecutable(program).isEmpty()) {
         QMessageBox::warning(parent, QStringLiteral("Control Panel"),
             QStringLiteral("\"%1\" is not installed.").arg(program));
+        return;
+    }
+    if (program == QStringLiteral("aeroshell-kcmloader")
+        && (args.isEmpty() || !QFileInfo::exists(args.constFirst()))) {
+        QMessageBox::warning(parent, QStringLiteral("Window Color"),
+            QStringLiteral("The Aero glass color editor is not installed."));
         return;
     }
 

@@ -2,6 +2,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <QLibraryInfo>
 
 // ---------------------------------------------------------------------------
 // Approved standalone launchers shared by MainWindow and detail pages.
@@ -10,6 +11,19 @@
 // Desktop Gadgets uses Aero7's native gadget host and gallery. This avoids
 // exposing Plasma edit mode and keeps the Control Panel entry aligned with the
 // gadget package shipped by Aero7.
+// Open AeroShell's glass-color editor, which is a KWin effect configuration
+// plugin rather than a normal kcmshell module. The loader needs both the
+// plugin path and an icon argument.
+inline QStringList aeroWindowColor()
+{
+    return {
+        QStringLiteral("aeroshell-kcmloader"),
+        QLibraryInfo::path(QLibraryInfo::PluginsPath)
+            + QStringLiteral("/kwin/effects/configs/kwin_aeroglassblur_config.so"),
+        QStringLiteral("preferences-desktop-color")
+    };
+}
+
 inline const QStringList kWidgetExplorerCmd = {
     QStringLiteral("aero7-gadget-host"), QStringLiteral("--gallery")
 };

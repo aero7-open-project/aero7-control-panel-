@@ -70,6 +70,15 @@ int main()
     if (SettingsCatalog::findByKey(QStringLiteral("not-a-real-setting")))
         return 15;
 
+    const SettingDefinition *windowColor =
+        SettingsCatalog::findByKey(QStringLiteral("colors"));
+    if (!windowColor || windowColor->backend != SettingsBackend::ExternalCommand
+        || windowColor->command.size() != 3
+        || windowColor->command.at(0) != QStringLiteral("aeroshell-kcmloader")
+        || !windowColor->command.at(1).endsWith(
+            QStringLiteral("/kwin_aeroglassblur_config.so")))
+        return 16;
+
     const QList<PageId> hubs = {
         PageId::DisplaySettings, PageId::NetworkSettings,
         PageId::RegionLanguage, PageId::TaskbarStartMenu,

@@ -356,16 +356,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
             // External-launch links (e.g. Desktop Gadgets -> KDE widget panels).
             auto cmdIt = m_commandLinks.constFind(watched);
             if (cmdIt != m_commandLinks.constEnd()) {
-                QStringList cmd = cmdIt.value();
-                const QString program = cmd.takeFirst();
-                // If the target program isn't on PATH, tell the user it's not
-                // installed rather than failing silently.
-                if (QStandardPaths::findExecutable(program).isEmpty()) {
-                    QMessageBox::warning(this, tr("Control Panel"),
-                        tr("\"%1\" is not installed.").arg(program));
-                } else {
-                    QProcess::startDetached(program, cmd);
-                }
+                launchDetached(this, cmdIt.value());
                 return true;
             }
             auto appletIt = m_appletLinks.constFind(watched);
@@ -1662,6 +1653,8 @@ QWidget *MainWindow::buildCategoryPage(const QString &currentCategory)
             { "Change how your keyboard works",              kEaseOfAccessPath },
             { "Start speech recognition",                    kEaseOfAccessPath },
         };
+        if (text == QStringLiteral("Change window glass colors"))
+            m_commandLinks.insert(l, aeroWindowColor());
         if (!m_subpageLinks.contains(l) && !m_commandLinks.contains(l)) {
             const auto appIt = taskApplet.constFind(text);
             if (appIt != taskApplet.constEnd())

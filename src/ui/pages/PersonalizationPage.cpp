@@ -587,20 +587,7 @@ void PersonalizationPage::chooseWallpaper()
 
 void PersonalizationPage::openWindowColor()
 {
-    const QString loader =
-        QStandardPaths::findExecutable(QStringLiteral("aeroshell-kcmloader"));
-    const QString module = QStringLiteral(
-        "/usr/lib/qt6/plugins/kwin/effects/configs/"
-        "kwin_aeroglassblur_config.so");
-    if (loader.isEmpty() || !QFileInfo::exists(module)) {
-        QMessageBox::warning(
-            this, QStringLiteral("Window Color and Appearance"),
-            QStringLiteral("The Aero7 window-color component is not installed."));
-        return;
-    }
-    // The AeroShell loader expects a module path and an icon name.
-    QProcess::startDetached(loader,
-                            {module, QStringLiteral("preferences-desktop-color")});
+    launchDetached(this, aeroWindowColor());
 }
 
 void PersonalizationPage::configureLockScreen()
