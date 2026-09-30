@@ -16,6 +16,11 @@ int main()
         QStringLiteral("accounts"), QStringLiteral("display"),
     };
     QSet<QString> nativeReplacementsFound;
+    const QSet<QString> formerlyDeadPageKeys = {
+        QStringLiteral("icons"), QStringLiteral("pointers"),
+        QStringLiteral("splash"), QStringLiteral("notifications"),
+        QStringLiteral("file-search"),
+    };
     bool foundNetworkManagement = false;
     bool foundSpelling = false;
     for (const SettingDefinition &setting : settings) {
@@ -46,6 +51,9 @@ int main()
                     setting.kdeModule}))
                 return 5;
         }
+        if (formerlyDeadPageKeys.contains(setting.key)
+            && setting.backend != SettingsBackend::KdeModuleBridge)
+            return 17;
         if (setting.kdeModule == QStringLiteral("kcm_networkmanagement"))
             foundNetworkManagement = true;
         if (setting.kdeModule == QStringLiteral("kcmspellchecking"))

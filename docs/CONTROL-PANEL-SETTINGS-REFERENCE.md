@@ -35,12 +35,12 @@ permissions, unavailable features, and troubleshooting.
 | **Window Color** | Change Aero glass color and transparency. | Aero Glass Color; AeroShell glass-color editor | Aero7 native editor |
 | **Aero7 Appearance** | Use the supported Aero7 appearance for programs and windows. | Application Style; <code>kcm_style</code> | Aero7 page |
 | **Aero7 Desktop Theme** | Choose an installed Aero7 desktop theme. | Plasma Style; <code>kcm_desktoptheme</code> | Aero7 page |
-| **Desktop Icons** | Choose which Aero7 icons appear on the desktop. | Icons; <code>kcm_icons</code> | Aero7 partial page |
-| **Mouse Pointers** | Review the Aero7 pointer design used by the desktop. | Pointers; <code>kcm_cursortheme</code> | Aero7 partial page |
+| **Icon Theme** | Choose the icons used by applications and the desktop. | Icons; <code>kcm_icons</code> | Temporary KDE module |
+| **Mouse Pointers** | Choose the pointer design and size. | Pointers; <code>kcm_cursortheme</code> | Temporary KDE module |
 | **Desktop Background** | Choose the desktop picture and how it fills the screen. | Wallpaper; <code>kcm_wallpaper</code> | Aero7 page |
 | **Fonts** | Preview, install and remove fonts. | Fonts; <code>kcm_fonts</code> | Aero7 page |
 | **Font Management** | Preview, install and remove fonts. | Font Management; <code>kcm_fontinst</code> | Aero7 page |
-| **Welcome Animation** | Use the Aero7 welcome animation supplied by the selected theme. | Splash Screen; <code>kcm_splashscreen</code> | Aero7 page |
+| **Welcome Animation** | Choose the desktop-session welcome animation. | Splash Screen; <code>kcm_splashscreen</code> | Temporary KDE module |
 
 ## Display (3)
 
@@ -57,7 +57,7 @@ permissions, unavailable features, and troubleshooting.
 | **Taskbar Appearance** | Lock, resize or automatically hide the Aero7 taskbar. | General Behavior; <code>kcm_workspace</code> | Aero7 page |
 | **Start Menu** | Choose recent-program and Jump List behavior in the Start menu. | Plasma Search; <code>kcm_plasmasearch</code> | Aero7 page |
 | **Taskbar Buttons** | Choose how taskbar buttons combine and display labels. | Shortcuts; <code>kcm_keys</code> | Aero7 page |
-| **Notification Area** | Review notification-area behavior and icon overflow. | Notifications; <code>kcm_notifications</code> | Aero7 partial page |
+| **Notification Area** | Configure alerts and notification behavior. | Notifications; <code>kcm_notifications</code> | Temporary KDE module |
 
 ## Window behavior (12)
 
@@ -143,7 +143,7 @@ permissions, unavailable features, and troubleshooting.
 | Setting | What it does | KDE Plasma name and implementation | Status |
 | --- | --- | --- | --- |
 | **Folder Options** | Choose how folder windows display, open and search files. | Folder Options; Aero7 Control Panel page | Aero7 native |
-| **File Search and Indexing** | Choose file-index and content-search behavior. | File Search; <code>kcm_baloofile</code> | Aero7 page |
+| **File Search and Indexing** | Choose indexed locations and file-search behavior. | File Search; <code>kcm_baloofile</code> | Temporary KDE module |
 | **Recent Items** | Manage file activity history and exclusions. | Recent Files; <code>kcm_recentFiles</code> | Temporary KDE module |
 | **Search Keywords** | Configure short keywords for web searches. | Web Search Keywords; <code>kcm_webshortcuts</code> | Temporary KDE module |
 

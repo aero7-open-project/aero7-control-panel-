@@ -19,7 +19,7 @@ def main() -> int:
     catalog = [entry for entry in settings if "optionalFeature" not in entry]
     bridges = [entry for entry in catalog
                if entry.get("backend") == "KDE settings module (temporary)"]
-    if len(catalog) != 72 or len(bridges) != 44:
+    if len(catalog) != 72 or len(bridges) != 49:
         print(f"Unexpected catalog or bridge count: {len(catalog)} / {len(bridges)}")
         return 2
     if any(entry.get("status") != "KDE compatibility backend"

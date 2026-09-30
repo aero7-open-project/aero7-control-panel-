@@ -38,12 +38,12 @@ so it can later be copied directly into the Aero7 GitHub wiki.
 | Window Color | Aero Glass Color | AeroShell glass-color editor | Aero7 native editor |
 | Aero7 Appearance | Application Style | `kcm_style` | Aero7 page |
 | Aero7 Desktop Theme | Plasma Style | `kcm_desktoptheme` | Aero7 page |
-| Desktop Icons | Icons | `kcm_icons` | Aero7 partial page |
-| Mouse Pointers | Pointers | `kcm_cursortheme` | Aero7 partial page |
+| Icon Theme | Icons | `kcm_icons` | Temporary KDE module |
+| Mouse Pointers | Pointers | `kcm_cursortheme` | Temporary KDE module |
 | Desktop Background | Wallpaper | `kcm_wallpaper` | Aero7 page |
 | Fonts | Fonts | `kcm_fonts` | Aero7 page |
 | Font Management | Font Management | `kcm_fontinst` | Aero7 page |
-| Welcome Animation | Splash Screen | `kcm_splashscreen` | Aero7 page |
+| Welcome Animation | Splash Screen | `kcm_splashscreen` | Temporary KDE module |
 
 ## Display
 
@@ -60,7 +60,7 @@ so it can later be copied directly into the Aero7 GitHub wiki.
 | Taskbar Appearance | General Behavior | `kcm_workspace` | Aero7 page |
 | Start Menu | Plasma Search | `kcm_plasmasearch` | Aero7 page |
 | Taskbar Buttons | Shortcuts | `kcm_keys` | Aero7 page |
-| Notification Area | Notifications | `kcm_notifications` | Aero7 partial page |
+| Notification Area | Notifications | `kcm_notifications` | Temporary KDE module |
 
 ## Window behavior
 
@@ -146,7 +146,7 @@ so it can later be copied directly into the Aero7 GitHub wiki.
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Folder Options | Folder Options | Aero7 Control Panel page | Aero7 native |
-| File Search and Indexing | File Search | `kcm_baloofile` | Aero7 page |
+| File Search and Indexing | File Search | `kcm_baloofile` | Temporary KDE module |
 | Recent Items | Recent Files | `kcm_recentFiles` | Temporary KDE module |
 | Search Keywords | Web Search Keywords | `kcm_webshortcuts` | Temporary KDE module |
 
