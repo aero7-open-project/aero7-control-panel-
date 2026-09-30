@@ -136,9 +136,10 @@ present.
 
 ### Default Programs
 
-Default applications, file associations, personal folder locations, device
-actions, search indexing, recent items, and web-search keywords open their
-individual KDE modules.
+The Aero7 Default Programs and Folder Options pages handle their supported
+controls. Advanced default-app, file-association, folder-location,
+removable-device, recent-item, and web-search settings temporarily open their
+working KDE modules.
 
 ## User Accounts
 
@@ -158,11 +159,12 @@ and a link that opens Optional Features with the correct item selected.
 ## Appearance and Personalization
 
 - Applies installed color schemes and the selected desktop background.
-- Opens focused modules for application style, desktop style, icons, pointers,
-  fonts, title-bar decoration, effects, and window behavior.
+- Uses Aero7 pages for the desktop theme, wallpaper, icons, pointers, and fonts.
+  Advanced title-bar, effects, and window-behavior options temporarily open
+  their working KDE modules.
 - Sound configuration uses the native Aero7 Sound page.
-- Lock-screen timeout and resume behavior are written to the real Plasma
-  configuration.
+- Lock-screen timeout and resume behavior use the installed KDE lock-screen
+  module until an Aero7 editor is verified.
 
 ## Clock, Language, and Region
 

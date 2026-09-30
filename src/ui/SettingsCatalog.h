@@ -32,7 +32,7 @@ enum class SettingsSection {
 enum class SettingsBackend {
     Aero7Page,
     Aero7Applet,
-    Aero7NativeEditor,
+    KdeModuleBridge,
     ExternalCommand,
 };
 
@@ -50,7 +50,7 @@ struct SettingDefinition {
     SettingsSection section;
     QString description;
     QString iconName;
-    SettingsBackend backend = SettingsBackend::Aero7NativeEditor;
+    SettingsBackend backend = SettingsBackend::KdeModuleBridge;
     ReplacementStatus status = ReplacementStatus::Native;
     PageId page = PageId::None;
     QString applet;

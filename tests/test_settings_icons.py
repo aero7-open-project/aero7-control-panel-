@@ -16,6 +16,16 @@ def main() -> int:
         text=True,
     )
     settings = json.loads(result.stdout)
+    catalog = [entry for entry in settings if "optionalFeature" not in entry]
+    bridges = [entry for entry in catalog
+               if entry.get("backend") == "KDE settings module (temporary)"]
+    if len(catalog) != 72 or len(bridges) != 44:
+        print(f"Unexpected catalog or bridge count: {len(catalog)} / {len(bridges)}")
+        return 2
+    if any(entry.get("status") != "KDE compatibility backend"
+           for entry in bridges):
+        print("A KDE bridge is incorrectly labeled as an Aero7 native editor")
+        return 3
     missing = [
         f"{setting['key']}: {setting['icon']}"
         for setting in settings

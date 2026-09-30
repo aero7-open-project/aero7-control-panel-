@@ -2,6 +2,7 @@
 #include "PageRegistry.h"
 
 #include <QCoreApplication>
+#include <QFileInfo>
 #include <QSet>
 
 int main(int argc, char **argv)
@@ -24,6 +25,18 @@ int main(int argc, char **argv)
             return 3;
         names.insert(item.windowsName);
         previous = item.windowsName;
+
+        bool bundledIcon = false;
+        for (const int size : {16, 22, 24, 32, 48, 128, 256}) {
+            if (QFileInfo::exists(QStringLiteral(AERO7_PACK_ICON_SOURCE)
+                                  + QStringLiteral("/%1/%2.png")
+                                        .arg(size).arg(item.iconName))) {
+                bundledIcon = true;
+                break;
+            }
+        }
+        if (!bundledIcon)
+            return 9;
 
         switch (item.target.kind) {
         case LinkTarget::Page:

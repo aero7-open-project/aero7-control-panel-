@@ -1,7 +1,7 @@
 #include "SettingsHubPage.h"
 #include "IconHelper.h"
 #include "LinkLabel.h"
-#include "NativeSettingsDialog.h"
+#include "KdeSettingsBridge.h"
 #include "Win7Ui.h"
 #include "Branding.h"
 
@@ -100,9 +100,8 @@ void SettingsHubPage::activate(const SettingDefinition &setting)
     case SettingsBackend::Aero7Applet:
         emit appletRequested(setting.applet);
         break;
-    case SettingsBackend::Aero7NativeEditor: {
-        NativeSettingsDialog dialog(setting, this);
-        dialog.exec();
+    case SettingsBackend::KdeModuleBridge: {
+        KdeSettingsBridge::open(this, setting.kdeModule, setting.aeroName);
         break;
     }
     case SettingsBackend::ExternalCommand:

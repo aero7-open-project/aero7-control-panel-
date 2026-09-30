@@ -7,7 +7,7 @@ checks from proof that a setting changes its system backend.
 | --- | --- | --- |
 | Search/catalog entries | 72 settings and 13 optional-feature entries | All 85 have exact, bundled AeroThemePlasma icon-pack assets; `settings-icons-test` enforces this. |
 | Setting entry points | 70 in-app routes | Offscreen startup smoke: no crashes or application errors. The remaining two entries launch Window Color and Programs Center; their executables and the Window Color plugin are present on the host. |
-| Native editors | 44 advanced settings | Every catalogued editor opens with at least one field; the generic placeholder was removed. A failed Apply now keeps the dialog open. |
+| Advanced settings | 44 temporary KDE bridges | The misleading Aero7 property sheets are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 44 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
 | Automated tests | 15 CTests | All pass. The background-open timing test passed five additional consecutive runs. |
@@ -21,14 +21,23 @@ Background were opened and visually inspected. The gallery displayed nine
 wallpapers. The guest application log contained only MESA-EGL software-rendering
 warnings, not Control Panel errors. The guest's base disk was not changed.
 
+The rebuilt binary was also copied into a fresh snapshot of that VM. All 44
+temporary KDE module IDs were compared with the guest's installed module list.
+Launching `--setting network-connections` opened the working Wi-Fi & Networking
+editor under the Aero7 window frame, titled **Change Adapter Settings**. Its
+connection, IPv4 and IPv6 controls were visible. No network configuration was
+changed. The VM printed MESA software-rendering warnings, but the editor
+remained usable. The guest's snapshot was disposable.
+
 ## Remaining functional acceptance
 
-The route/editor smoke checks do **not** prove that all 72 settings persist and
-change the running Plasma/KWin services. Each advanced editor needs a
-save/readback/backend-response check in a disposable VM, particularly hardware
-and network controls. Optional-feature install/removal also needs separate
-end-to-end coverage. No change here should be called a complete settings audit
-until those checks pass.
+The route smoke checks do **not** prove that all 72 settings persist and
+change the running Plasma/KWin services. The 44 advanced entries now open
+KDE's working modules temporarily instead of the unverified Aero7 editors.
+Each native Aero7 page still needs a save/readback/backend-response check in
+a disposable VM, particularly hardware and network controls. Optional-feature
+install/removal also needs separate end-to-end coverage. No change here should
+be called a complete settings audit until those checks pass.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

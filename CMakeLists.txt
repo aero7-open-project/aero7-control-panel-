@@ -27,6 +27,7 @@ add_executable(controlpanel
     src/ui/PageRegistry.cpp
     src/ui/ControlPanelItems.cpp
     src/ui/SettingsCatalog.cpp
+    src/ui/KdeSettingsBridge.cpp
     src/ui/CategoryWidget.cpp
     src/ui/pages/LinuxUpdatePage.cpp
     src/ui/pages/SystemPage.cpp
@@ -55,7 +56,6 @@ add_executable(controlpanel
     src/ui/dialogs/SoundDialog.cpp
     src/ui/dialogs/DevicePropertiesDialog.cpp
     src/ui/dialogs/LinverConfigDialog.cpp
-    src/ui/dialogs/NativeSettingsDialog.cpp
     src/ui/dialogs/BluetoothDialog.cpp
     src/ui/dialogs/AddPrinterDialog.cpp
     src/devices/SysfsScanner.cpp
@@ -190,6 +190,8 @@ if(BUILD_TESTING)
         src/ui/PageRegistry.cpp
     )
     target_include_directories(control-panel-items-test PRIVATE src/ui)
+    target_compile_definitions(control-panel-items-test PRIVATE
+        AERO7_PACK_ICON_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack")
     target_link_libraries(control-panel-items-test PRIVATE Qt6::Core)
     add_test(NAME control-panel-items-test COMMAND control-panel-items-test)
 
@@ -244,9 +246,9 @@ if(BUILD_TESTING)
         tests/SettingsHubPageTest.cpp
         src/ui/LinkLabel.h
         src/ui/SettingsCatalog.cpp
+        src/ui/KdeSettingsBridge.cpp
         src/ui/pages/SettingsHubPage.h
         src/ui/pages/SettingsHubPage.cpp
-        src/ui/dialogs/NativeSettingsDialog.cpp
         src/data/Branding.cpp
     )
     target_include_directories(settings-hub-page-test PRIVATE

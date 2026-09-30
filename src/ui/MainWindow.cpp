@@ -45,6 +45,7 @@
 #include "FeatureCatalog.h"
 #include "SettingsHubPage.h"
 #include "Commands.h"
+#include "KdeSettingsBridge.h"
 #include "pages/LinuxUpdatePage.h"
 #include "pages/SystemPage.h"
 #include "pages/InstalledUpdatesPage.h"
@@ -378,7 +379,13 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
             // External-launch links (e.g. Desktop Gadgets -> KDE widget panels).
             auto cmdIt = m_commandLinks.constFind(watched);
             if (cmdIt != m_commandLinks.constEnd()) {
-                launchDetached(this, cmdIt.value());
+                const QStringList command = cmdIt.value();
+                if (command.size() == 4
+                    && command.first() == QStringLiteral("kcmshell6")
+                    && command.at(1) == QStringLiteral("--caption"))
+                    KdeSettingsBridge::open(this, command.last(), command.at(2));
+                else
+                    launchDetached(this, command);
                 return true;
             }
             auto appletIt = m_appletLinks.constFind(watched);
@@ -519,6 +526,9 @@ bool MainWindow::openSetting(const QString &key)
     const SettingDefinition *setting = SettingsCatalog::findByKey(key);
     if (!setting)
         return false;
+
+    if (setting->backend == SettingsBackend::KdeModuleBridge)
+        return KdeSettingsBridge::open(this, setting->kdeModule, setting->aeroName);
 
     const LinkTarget target = SettingsCatalog::targetForSetting(*setting);
     switch (target.kind) {

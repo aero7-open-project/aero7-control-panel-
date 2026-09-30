@@ -34,13 +34,16 @@ int main()
         if (target.kind == LinkTarget::None || target.kind == LinkTarget::Disabled)
             return 4;
 
-        if (setting.backend == SettingsBackend::Aero7NativeEditor) {
-            // Keep the original module ID as audit metadata, but never attach
-            // a command capable of opening its user interface.
+        if (setting.backend == SettingsBackend::KdeModuleBridge) {
+            // Incomplete Aero7 forms must route to the actual KCM, not a
+            // visually similar page that cannot change this setting.
             if (!setting.kdeModule.startsWith(QStringLiteral("kcm"))
                 || !setting.command.isEmpty()
-                || setting.status != ReplacementStatus::Native
-                || target.kind != LinkTarget::Page)
+                || setting.status != ReplacementStatus::CompatibilityBridge
+                || target.kind != LinkTarget::Command
+                || target.command != QStringList({QStringLiteral("kcmshell6"),
+                    QStringLiteral("--caption"), setting.aeroName,
+                    setting.kdeModule}))
                 return 5;
         }
         if (setting.kdeModule == QStringLiteral("kcm_networkmanagement"))

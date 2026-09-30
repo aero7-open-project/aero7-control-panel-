@@ -1,10 +1,9 @@
 #include "SettingsHubPage.h"
 #include "Branding.h"
-#include "NativeSettingsDialog.h"
+#include "KdeSettingsBridge.h"
 
 #include <QApplication>
 #include <QLabel>
-#include <QFormLayout>
 #include <QPushButton>
 #include <QSettings>
 #include <QSet>
@@ -58,14 +57,14 @@ int main(int argc, char **argv)
         || renderedKeys.size() != SettingsCatalog::all().size())
         return 3;
 
-    // Every advanced setting advertised by the catalog must have a real
-    // Aero7 editor, never the old generic 'enable feature' placeholder.
+    // Unit builds do not necessarily contain Plasma's runtime modules. The
+    // installed-module check is an opt-in integration gate for Aero7 hosts.
     for (const SettingDefinition &setting : SettingsCatalog::all()) {
-        if (setting.backend != SettingsBackend::Aero7NativeEditor)
+        if (setting.backend != SettingsBackend::KdeModuleBridge)
             continue;
-        NativeSettingsDialog dialog(setting);
-        auto *form = dialog.findChild<QFormLayout *>();
-        if (!form || form->rowCount() == 0)
+        if (setting.kdeModule.isEmpty()
+            || (qEnvironmentVariableIsSet("AERO7_CHECK_INSTALLED_KCMS")
+                && !KdeSettingsBridge::moduleAvailable(setting.kdeModule)))
             return 6;
     }
 

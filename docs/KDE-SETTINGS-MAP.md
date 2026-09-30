@@ -18,9 +18,14 @@ so it can later be copied directly into the Aero7 GitHub wiki.
 - **Aero7 native** means the setting is handled inside Control Panel.
 - **Aero7 partial** means Control Panel handles part of the workflow and may
   still use a KDE or Linux service for advanced options.
-- **Aero7 native editor** means Control Panel writes the established
-  Plasma/KWin/KIO configuration through its own Windows-style property sheet.
-  It does not open KDE System Settings or an individual KCM user interface.
+- **Temporary KDE module** means Aero7 launches the installed KDE settings
+  module under the Windows-style setting name. This bridge is used where the
+  old Aero7 property sheet did not perform its advertised action. The catalog
+  checks the module before launch and gives a clear error if it is absent.
+- The state cells below describe the current route. `control
+  --list-settings-json` also exposes `backend` and `status` for every catalog
+  setting, including temporary bridges; optional-feature search entries use
+  their separate feature-state fields.
 - Aero7 installs `plasma-nm` for Network Management and uses Plasma 6's
   `kcmspellchecking` module with English and Dutch Hunspell dictionaries.
 - KDE Wallet is intentionally not installed or exposed by Aero7 Control Panel.
@@ -30,154 +35,157 @@ so it can later be copied directly into the Aero7 GitHub wiki.
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Personalization | Global Theme | Plasma configuration / Aero7 Personalization | Aero7 native |
-| Window Color | Colors | `kcm_colors` | Aero7 native editor |
-| Application Appearance | Application Style | `kcm_style` | Aero7 native editor |
-| Desktop Style | Plasma Style | `kcm_desktoptheme` | Aero7 native editor |
-| Icons | Icons | `kcm_icons` | Aero7 native editor |
-| Mouse Pointers | Pointers | `kcm_cursortheme` | Aero7 native editor |
-| Desktop Background | Wallpaper | `kcm_wallpaper` | Aero7 native editor |
-| Fonts | Fonts | `kcm_fonts` | Aero7 native editor |
-| Font Management | Font Management | `kcm_fontinst` | Aero7 native editor |
-| Welcome Animation | Splash Screen | `kcm_splashscreen` | Aero7 native editor |
+| Window Color | Aero Glass Color | AeroShell glass-color editor | Aero7 native editor |
+| Aero7 Appearance | Application Style | `kcm_style` | Aero7 page |
+| Aero7 Desktop Theme | Plasma Style | `kcm_desktoptheme` | Aero7 page |
+| Desktop Icons | Icons | `kcm_icons` | Aero7 partial page |
+| Mouse Pointers | Pointers | `kcm_cursortheme` | Aero7 partial page |
+| Desktop Background | Wallpaper | `kcm_wallpaper` | Aero7 page |
+| Fonts | Fonts | `kcm_fonts` | Aero7 page |
+| Font Management | Font Management | `kcm_fontinst` | Aero7 page |
+| Welcome Animation | Splash Screen | `kcm_splashscreen` | Aero7 page |
 
 ## Display
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Screen Resolution | Display Configuration | `kcm_kscreen` | Aero7 native editor |
-| Night Light | Night Light | `kcm_nightlight` | Aero7 native editor |
-| Day and Night Schedule | Day-Night Cycle | `kcm_nighttime` | Aero7 native editor |
+| Screen Resolution | Display Configuration | `kcm_kscreen` | Aero7 page |
+| Night Light | Night Light | `kcm_nightlight` | Temporary KDE module |
+| Day and Night Schedule | Day-Night Cycle | `kcm_nighttime` | Temporary KDE module |
 
 ## Taskbar and Start menu
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Desktop Behavior | General Behavior | `kcm_workspace` | Aero7 native editor |
-| Start Menu Search | Plasma Search | `kcm_plasmasearch` | Aero7 native editor |
-| Keyboard Shortcuts | Shortcuts | `kcm_keys` | Aero7 native editor |
-| Notification Area | Notifications | `kcm_notifications` | Aero7 native editor |
+| Taskbar Appearance | General Behavior | `kcm_workspace` | Aero7 page |
+| Start Menu | Plasma Search | `kcm_plasmasearch` | Aero7 page |
+| Taskbar Buttons | Shortcuts | `kcm_keys` | Aero7 page |
+| Notification Area | Notifications | `kcm_notifications` | Aero7 partial page |
 
 ## Window behavior
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Window Borders | Window Decorations | `kcm_kwindecoration` | Aero7 native editor |
-| Window Behavior | Window Behavior | `kcm_kwinoptions` | Aero7 native editor |
-| Program Window Rules | Window Rules | `kcm_kwinrules` | Aero7 native editor |
-| Switch Between Windows | Task Switcher | `kcm_kwintabbox` | Aero7 native editor |
-| Visual Effects | Desktop Effects | `kcm_kwin_effects` | Aero7 native editor |
-| Animations | Animations | `kcm_animations` | Aero7 native editor |
-| Screen Edges | Screen Edges | `kcm_kwinscreenedges` | Aero7 native editor |
-| Multiple Desktops | Virtual Desktops | `kcm_kwin_virtualdesktops` | Aero7 native editor |
-| Activities | Activities | `kcm_activities` | Aero7 native editor |
-| Window Manager Add-ons | KWin Scripts | `kcm_kwin_scripts` | Aero7 native editor |
-| Legacy App Keyboard Access | Legacy X11 App Support | `kcm_kwinxwayland` | Aero7 native editor |
+| Windows Snapping | Window Snapping | Aero7 Control Panel page | Aero7 native |
+| Window Borders | Window Decorations | `kcm_kwindecoration` | Temporary KDE module |
+| Window Behavior | Window Behavior | `kcm_kwinoptions` | Temporary KDE module |
+| Program Window Rules | Window Rules | `kcm_kwinrules` | Temporary KDE module |
+| Switch Between Windows | Task Switcher | `kcm_kwintabbox` | Temporary KDE module |
+| Visual Effects | Desktop Effects | `kcm_kwin_effects` | Temporary KDE module |
+| Animations | Animations | `kcm_animations` | Temporary KDE module |
+| Screen Edges | Screen Edges | `kcm_kwinscreenedges` | Temporary KDE module |
+| Multiple Desktops | Virtual Desktops | `kcm_kwin_virtualdesktops` | Temporary KDE module |
+| Activities | Activities | `kcm_activities` | Temporary KDE module |
+| Window Manager Add-ons | KWin Scripts | `kcm_kwin_scripts` | Temporary KDE module |
+| Legacy App Keyboard Access | Legacy X11 App Support | `kcm_kwinxwayland` | Temporary KDE module |
 
 ## Input devices
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Mouse | Mouse | `kcm_mouse` | Aero7 native editor |
-| Keyboard | Keyboard | `kcm_keyboard` | Aero7 native editor |
-| Touchpad | Touchpad | `kcm_touchpad` | Aero7 native editor |
-| Touchscreen | Touchscreen | `kcm_touchscreen` | Aero7 native editor |
-| Touchscreen Gestures | Touchscreen Gestures | `kcm_kwintouchscreen` | Aero7 native editor |
-| Pen and Drawing Tablet | Drawing Tablet | `kcm_tablet` | Aero7 native editor |
-| Game Controller | Game Controller | `kcm_gamecontroller` | Aero7 native editor |
-| On-Screen Keyboard | Virtual Keyboard | `kcm_virtualkeyboard` | Aero7 native editor |
+| Mouse | Mouse | `kcm_mouse` | Temporary KDE module |
+| Keyboard | Keyboard | `kcm_keyboard` | Temporary KDE module |
+| Touchpad | Touchpad | `kcm_touchpad` | Temporary KDE module |
+| Touchscreen | Touchscreen | `kcm_touchscreen` | Temporary KDE module |
+| Touchscreen Gestures | Touchscreen Gestures | `kcm_kwintouchscreen` | Temporary KDE module |
+| Pen and Drawing Tablet | Drawing Tablet | `kcm_tablet` | Temporary KDE module |
+| Game Controller | Game Controller | `kcm_gamecontroller` | Temporary KDE module |
+| On-Screen Keyboard | Virtual Keyboard | `kcm_virtualkeyboard` | Temporary KDE module |
 
 ## Sound
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Sound | Sound | PipeWire/PulseAudio / Aero7 Sound dialog | Aero7 native |
-| System Sounds | System Sounds | `kcm_soundtheme` | Aero7 native editor |
+| System Sounds | System Sounds | `kcm_soundtheme` | Temporary KDE module |
 
 ## Network
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Network and Sharing Center | Connections | NetworkManager / Aero7 network page | Aero7 native |
-| Change Adapter Settings | Connections | `kcm_networkmanagement` | Aero7 native editor |
-| Proxy Settings | Proxy | `kcm_proxy` | Aero7 native editor |
-| Connection Preferences | Connection Preferences | `kcm_netpref` | Aero7 native editor |
+| Change Adapter Settings | Connections | `kcm_networkmanagement` | Temporary KDE module |
+| Proxy Settings | Proxy | `kcm_proxy` | Temporary KDE module |
+| Connection Preferences | Connection Preferences | `kcm_netpref` | Temporary KDE module |
 
 ## Power
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Power Options | Power Management | power-profiles-daemon + UPower / Aero7 Power Options | Aero7 native |
-| Advanced Power Settings | Power Management | `kcm_powerdevilprofilesconfig` | Aero7 native editor |
-| Battery and Energy | Energy | `kcm_mobile_power` | Aero7 native editor |
+| Advanced Power Settings | Power Management | `kcm_powerdevilprofilesconfig` | Temporary KDE module |
+| Battery and Energy | Energy | `kcm_mobile_power` | Temporary KDE module |
 
 ## User accounts
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | User Accounts | Users | Linux account tools + polkit / Aero7 User Accounts | Aero7 native |
-| Online Accounts | Online Accounts | `kcm_kaccounts` | Aero7 native editor |
+| Online Accounts | Online Accounts | `kcm_kaccounts` | Temporary KDE module |
 
 ## Region and language
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Date and Time | Date & Time | `kcm_clock` / Aero7 Date and Time dialog | Aero7 partial |
-| Region and Language | Region & Language | `kcm_regionandlang` | Aero7 native editor |
-| Spelling | Spell Check | `kcmspellchecking` | Aero7 native editor |
+| Region and Language | Region & Language | `kcm_regionandlang` | Temporary KDE module |
+| Spelling | Spell Check | `kcmspellchecking` | Temporary KDE module |
 
 ## Default programs and files
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Default Programs | Default Applications | `kcm_componentchooser` | Aero7 native editor |
-| File Type Associations | File Associations | `kcm_filetypes` | Aero7 native editor |
-| Personal Folder Locations | Locations | `kcm_desktoppaths` | Aero7 native editor |
-| Removable Device Actions | Device Actions | `kcm_solid_actions` | Aero7 native editor |
+| Get Programs | Software Management | Programs Center | Aero7 external app |
+| Default Programs | Default Applications | `kcm_componentchooser` | Temporary KDE module |
+| File Type Associations | File Associations | `kcm_filetypes` | Temporary KDE module |
+| Personal Folder Locations | Locations | `kcm_desktoppaths` | Temporary KDE module |
+| Removable Device Actions | Device Actions | `kcm_solid_actions` | Temporary KDE module |
 
 ## Search and history
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| File Search and Indexing | File Search | `kcm_baloofile` | Aero7 native editor |
-| Recent Items | Recent Files | `kcm_recentFiles` | Aero7 native editor |
-| Search Keywords | Web Search Keywords | `kcm_webshortcuts` | Aero7 native editor |
+| Folder Options | Folder Options | Aero7 Control Panel page | Aero7 native |
+| File Search and Indexing | File Search | `kcm_baloofile` | Aero7 page |
+| Recent Items | Recent Files | `kcm_recentFiles` | Temporary KDE module |
+| Search Keywords | Web Search Keywords | `kcm_webshortcuts` | Temporary KDE module |
 
 ## Ease of access
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | Ease of Access Center | Accessibility | `kcm_access` / Aero7 Ease of Access Center | Aero7 partial |
-| Advanced Accessibility | Accessibility | `kcm_access` | Aero7 native editor |
+| Advanced Accessibility | Accessibility | `kcm_access` | Temporary KDE module |
 
 ## Startup and shutdown
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Startup Programs | Autostart | `kcm_autostart` | Aero7 native editor |
-| Sign-in and Sign-out | Desktop Session | `kcm_smserver` | Aero7 native editor |
-| Lock Screen | Screen Locking | `kcm_screenlocker` | Aero7 native editor |
-| Background Services | Background Services | `kcm_kded` | Aero7 native editor |
+| Startup Programs | Autostart | `kcm_autostart` | Temporary KDE module |
+| Sign-in and Sign-out | Desktop Session | `kcm_smserver` | Temporary KDE module |
+| Lock Screen | Screen Locking | `kcm_screenlocker` | Temporary KDE module |
+| Background Services | Background Services | `kcm_kded` | Temporary KDE module |
 
 ## Security and maintenance
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Firewall | Firewall | Aero7 `ufw` page | Aero7 partial |
+| Windows Firewall | Firewall | Aero7 firewall page | Aero7 partial |
 | Windows Update | Software Update | Aero7 `pacman` update page | Aero7 native |
-| Diagnostic Data | User Feedback | `kcm_feedback` | Aero7 native editor |
+| Diagnostic Data | User Feedback | `kcm_feedback` | Temporary KDE module |
 
 ## Storage and devices
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Automatic Media Mounting | Device Automounter | `kcm_device_automounter` | Aero7 native editor |
+| Automatic Media Mounting | Device Automounter | `kcm_device_automounter` | Temporary KDE module |
 
 ## Advanced system settings
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
 | System Information | Quick Settings | `kcm_landingpage` / Aero7 System page | Aero7 native |
-| Desktop Renderer | Plasma Renderer | `kcm_qtquicksettings` | Aero7 native editor |
+| Desktop Renderer | Plasma Renderer | `kcm_qtquicksettings` | Temporary KDE module |
 
 ## Replacement priorities
 

@@ -7,14 +7,17 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMessageBox>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QStandardPaths>
 #include <QStringList>
 #include <QTextStream>
 #include <QTimer>
 #include "MainWindow.h"
 #include "IconHelper.h"
 #include "SettingsCatalog.h"
+#include "KdeSettingsBridge.h"
 #include "FeatureCatalog.h"
 #include <Aero7Qt/stylesheet.h>
 
@@ -110,6 +113,8 @@ static void printSettingsCatalog()
             {QStringLiteral("icon"), setting.iconName},
             {QStringLiteral("section"),
              SettingsCatalog::sectionTitle(setting.section)},
+            {QStringLiteral("backend"), SettingsCatalog::backendLabel(setting)},
+            {QStringLiteral("status"), SettingsCatalog::statusLabel(setting.status)},
             {QStringLiteral("keywords"),
              QStringList{setting.kdeName, setting.kdeModule, setting.key}
                  .join(QLatin1Char(' '))},
@@ -213,10 +218,26 @@ int main(int argc, char *argv[]) {
     }
 
     if (setting) {
+        if (setting->backend == SettingsBackend::KdeModuleBridge)
+            return KdeSettingsBridge::open(nullptr, setting->kdeModule,
+                                           setting->aeroName) ? 0 : 3;
         const LinkTarget target = SettingsCatalog::targetForSetting(*setting);
         if (target.kind == LinkTarget::Command && !target.command.isEmpty()) {
-            const bool started = QProcess::startDetached(
-                target.command.first(), target.command.mid(1));
+            const QString program = target.command.first();
+            const QStringList arguments = target.command.mid(1);
+            if (QStandardPaths::findExecutable(program).isEmpty()
+                || (program == QStringLiteral("aeroshell-kcmloader")
+                    && (arguments.isEmpty()
+                        || !QFileInfo::exists(arguments.constFirst())))) {
+                QMessageBox::warning(nullptr, setting->aeroName,
+                    QStringLiteral("The application needed for %1 is not installed.")
+                        .arg(setting->aeroName));
+                return 3;
+            }
+            const bool started = QProcess::startDetached(program, arguments);
+            if (!started)
+                QMessageBox::warning(nullptr, setting->aeroName,
+                    QStringLiteral("Could not open %1.").arg(setting->aeroName));
             return started ? 0 : 3;
         }
     }

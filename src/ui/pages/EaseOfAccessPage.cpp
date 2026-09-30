@@ -1,7 +1,7 @@
 #include "EaseOfAccessPage.h"
 #include "LinkLabel.h"
 #include "IconHelper.h"
-#include "NativeSettingsDialog.h"
+#include "KdeSettingsBridge.h"
 #include "SettingsCatalog.h"
 #include "Win7Ui.h"
 
@@ -54,8 +54,7 @@ void EaseOfAccessPage::addSettingLink(QVBoxLayout *into, const QString &iconName
 void EaseOfAccessPage::openSetting(const QString &key)
 {
     if (const SettingDefinition *setting = SettingsCatalog::findByKey(key)) {
-        NativeSettingsDialog dialog(*setting, this);
-        dialog.exec();
+        KdeSettingsBridge::open(this, setting->kdeModule, setting->aeroName);
     }
 }
 

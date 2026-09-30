@@ -74,8 +74,8 @@ protected:
     }
 };
 
-// Launch an approved standalone helper detached. Settings are always handled
-// by Aero7 pages/dialogs; this helper is only for independent applications.
+// Launch an approved standalone helper detached. Advanced settings use the
+// checked KDE bridge from MainWindow and SettingsHubPage.
 inline void launchDetached(QWidget *parent, const QStringList &cmd)
 {
     if (cmd.isEmpty())
@@ -94,5 +94,7 @@ inline void launchDetached(QWidget *parent, const QStringList &cmd)
         return;
     }
 
-    QProcess::startDetached(program, args);
+    if (!QProcess::startDetached(program, args))
+        QMessageBox::warning(parent, QStringLiteral("Control Panel"),
+            QStringLiteral("Could not open \"%1\".").arg(program));
 }

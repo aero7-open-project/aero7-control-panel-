@@ -70,6 +70,8 @@ Current functionality includes:
 
 - Aero7 Getting Started page with internal links to working settings pages
 - Catalog-driven settings hubs that preserve every original KDE setting name
+- Working KDE-module bridges for advanced settings without a verified Aero7
+  editor; missing modules show a clear error instead of a nonfunctional form
 - Exact 45-item Windows 7 **All Control Panel Items** inventory and five-column order
 - Windows 7 names by default, with a persistent KDE Plasma naming option
 - Search and large/small-icon views backed by the same settings catalog
@@ -173,7 +175,7 @@ Aero7 desktop.
 | `pactl` / `paplay` | PipeWire/PulseAudio device and sound control |
 | `accountsservice` / `shadow` | Local account discovery and management |
 | `upower` / `power-profiles-daemon` | Battery state and power profiles |
-| Plasma/KWin configuration services | Apply desktop-owned settings without opening the KDE System Settings shell |
+| Plasma/KWin configuration services and KDE modules | Apply native Aero7 controls and temporarily open working advanced settings modules |
 
 ## Roadmap
 
