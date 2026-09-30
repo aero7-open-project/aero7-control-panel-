@@ -76,7 +76,9 @@ int main()
         || windowColor->command.size() != 3
         || windowColor->command.at(0) != QStringLiteral("aeroshell-kcmloader")
         || !windowColor->command.at(1).endsWith(
-            QStringLiteral("/kwin_aeroglassblur_config.so")))
+            QStringLiteral("/kwin_aeroglassblur_config.so"))
+        || windowColor->command.at(2)
+            != QStringLiteral("preferences-desktop-display-color"))
         return 16;
 
     const QList<PageId> hubs = {

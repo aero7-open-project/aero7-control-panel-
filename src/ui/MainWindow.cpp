@@ -145,6 +145,28 @@ void MainWindow::buildCrumbBar()
     auto *navBtns = new Aero7::NavigationButtons(m_crumbBar);
     m_backBtn = navBtns->back();
     m_forwardBtn = navBtns->forward();
+    // These are the actual circular navigation arrows from AeroThemePlasma's
+    // Windows 7 icon pack. Avoid drawing a second Qt button bezel around them.
+    for (auto *button : {m_backBtn, m_forwardBtn}) {
+        button->setFixedSize(30, 29);
+        button->setIconSize(QSize(27, 27));
+        button->setStyleSheet(
+            "QPushButton { background: transparent; border: 0; padding: 0; }"
+            "QPushButton:hover { background: rgba(255,255,255,45); }"
+            "QPushButton:pressed { background: rgba(90,150,200,60); }");
+    }
+    m_backBtn->setIcon(Aero7PackIcons::exact(QStringLiteral("go-previous")));
+    m_forwardBtn->setIcon(Aero7PackIcons::exact(QStringLiteral("go-next")));
+    m_historyButton = navBtns->menuButton();
+    m_historyButton->setArrowType(Qt::NoArrow);
+    m_historyButton->setText(QStringLiteral("▾"));
+    m_historyButton->setFixedSize(15, 26);
+    m_historyButton->setStyleSheet(
+        "QToolButton { background: transparent; border: 0; color: #40556A;"
+        " font-size: 12px; padding: 0; }"
+        "QToolButton:hover { background: rgba(255,255,255,80); }");
+    m_historyMenu = new QMenu(m_historyButton);
+    navBtns->setMenu(m_historyMenu);
     m_backBtn->setEnabled(false);
     m_forwardBtn->setEnabled(false);
     QObject::connect(m_backBtn, &QPushButton::clicked, this, &MainWindow::goBack);
@@ -920,6 +942,24 @@ void MainWindow::updateNavButtons()
         m_backBtn->setEnabled(m_historyIndex > 0);
     if (m_forwardBtn)
         m_forwardBtn->setEnabled(m_historyIndex < m_history.size() - 1);
+    if (m_historyMenu) {
+        m_historyMenu->clear();
+        for (int index = m_history.size() - 1; index >= 0; --index) {
+            const QString entry = m_history.at(index);
+            const QString label = entry.isEmpty()
+                ? QStringLiteral("Control Panel")
+                : entry.section(QLatin1Char('/'), -1);
+            QAction *action = m_historyMenu->addAction(label);
+            action->setCheckable(true);
+            action->setChecked(index == m_historyIndex);
+            connect(action, &QAction::triggered, this, [this, index] {
+                m_historyIndex = index;
+                showEntry(m_history.at(index));
+                updateNavButtons();
+            });
+        }
+        m_historyButton->setEnabled(m_history.size() > 1);
+    }
 }
 
 QWidget *MainWindow::buildHomePage()

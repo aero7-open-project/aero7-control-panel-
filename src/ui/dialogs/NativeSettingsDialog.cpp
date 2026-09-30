@@ -162,6 +162,10 @@ NativeSettingsDialog::NativeSettingsDialog(const SettingDefinition &setting,
     m_status = Win7::label(
         QStringLiteral("Changes are applied through the desktop's existing backend; no external settings window is opened."),
         8, "#555555");
+    if (m_options.isEmpty()) {
+        m_status->setText(QStringLiteral("This setting has no supported Aero7 editor yet."));
+        m_status->setStyleSheet(QStringLiteral("color: #A00000;"));
+    }
     m_status->setWordWrap(true);
     layout->addWidget(m_status);
     layout->addStretch(1);
@@ -170,12 +174,14 @@ NativeSettingsDialog::NativeSettingsDialog(const SettingDefinition &setting,
                                          | QDialogButtonBox::Cancel
                                          | QDialogButtonBox::Apply);
     connect(buttons, &QDialogButtonBox::accepted, this, [this]() {
-        apply();
-        accept();
+        if (apply())
+            accept();
     });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked,
-            this, &NativeSettingsDialog::apply);
+            this, [this]() { apply(); });
+    buttons->button(QDialogButtonBox::Ok)->setEnabled(!m_options.isEmpty());
+    buttons->button(QDialogButtonBox::Apply)->setEnabled(!m_options.isEmpty());
     layout->addWidget(buttons);
 }
 
@@ -201,8 +207,10 @@ QVariant NativeSettingsDialog::editorValue(const Option &option) const
     return {};
 }
 
-void NativeSettingsDialog::apply()
+bool NativeSettingsDialog::apply()
 {
+    if (m_options.isEmpty())
+        return false;
     bool applied = true;
     QHash<QString, QString> userDirectories;
     for (const Option &option : std::as_const(m_options)) {
@@ -260,6 +268,7 @@ void NativeSettingsDialog::apply()
                               : QStringLiteral("Some settings could not be applied. Check that the required service is running and that you have permission."));
     m_status->setStyleSheet(applied ? QStringLiteral("color: #1B6E1B;")
                                     : QStringLiteral("color: #A00000;"));
+    return applied;
 }
 
 void NativeSettingsDialog::reloadBackends() const
@@ -405,5 +414,5 @@ NativeSettingsDialog::optionsFor(const QString &key)
         return {choice("Desktop renderer:", "kdeglobals", "QtQuickRendererSettings", "Renderer", "auto",
                        {"Automatic|auto", "OpenGL|opengl", "Software|software"})};
 
-    return {boolean("Enable this desktop feature", "aero7rc", "Native Settings", key.toUtf8().constData(), true)};
+    return {};
 }

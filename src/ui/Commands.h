@@ -20,7 +20,7 @@ inline QStringList aeroWindowColor()
         QStringLiteral("aeroshell-kcmloader"),
         QLibraryInfo::path(QLibraryInfo::PluginsPath)
             + QStringLiteral("/kwin/effects/configs/kwin_aeroglassblur_config.so"),
-        QStringLiteral("preferences-desktop-color")
+        QStringLiteral("preferences-desktop-display-color")
     };
 }
 

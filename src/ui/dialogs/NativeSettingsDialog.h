@@ -30,11 +30,9 @@ public:
         QWidget *editor = nullptr;
     };
 
-private slots:
-    void apply();
-
 private:
 
+    bool apply();
     static QVector<Option> optionsFor(const QString &key);
     static QString configPath(const QString &file);
     QVariant editorValue(const Option &option) const;

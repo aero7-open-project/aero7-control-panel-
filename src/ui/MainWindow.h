@@ -11,6 +11,7 @@ class QScrollArea;
 class QLineEdit;
 class QToolButton;
 class QPushButton;
+class QMenu;
 class QLabel;
 class QHBoxLayout;
 class QVBoxLayout;
@@ -87,6 +88,8 @@ private:
 
     QPushButton *m_backBtn = nullptr;
     QPushButton *m_forwardBtn = nullptr;
+    QMenu *m_historyMenu = nullptr;
+    QToolButton *m_historyButton = nullptr;
 
     QStringList m_history;
     int         m_historyIndex = -1;

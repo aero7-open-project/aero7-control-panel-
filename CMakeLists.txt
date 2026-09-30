@@ -321,4 +321,20 @@ if(BUILD_TESTING)
 
     add_test(NAME icon-policy-test
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_icon_policy.py)
+    add_test(NAME settings-icons-test
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_settings_icons.py
+            $<TARGET_FILE:controlpanel>
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack)
+
+    add_executable(personalization-open-test
+        tests/PersonalizationOpenTest.cpp
+        src/ui/LinkLabel.h
+        src/ui/pages/PersonalizationPage.cpp)
+    target_include_directories(personalization-open-test PRIVATE src/ui src/ui/pages)
+    target_link_libraries(personalization-open-test PRIVATE
+        Qt6::Widgets Qt6::Test Qt6::Concurrent Aero7Qt::Aero7Qt)
+    add_test(NAME personalization-open-test COMMAND personalization-open-test)
+    set_tests_properties(personalization-open-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
 endif()

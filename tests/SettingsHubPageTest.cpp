@@ -1,8 +1,10 @@
 #include "SettingsHubPage.h"
 #include "Branding.h"
+#include "NativeSettingsDialog.h"
 
 #include <QApplication>
 #include <QLabel>
+#include <QFormLayout>
 #include <QPushButton>
 #include <QSettings>
 #include <QSet>
@@ -55,6 +57,17 @@ int main(int argc, char **argv)
     if (rows != SettingsCatalog::all().size()
         || renderedKeys.size() != SettingsCatalog::all().size())
         return 3;
+
+    // Every advanced setting advertised by the catalog must have a real
+    // Aero7 editor, never the old generic 'enable feature' placeholder.
+    for (const SettingDefinition &setting : SettingsCatalog::all()) {
+        if (setting.backend != SettingsBackend::Aero7NativeEditor)
+            continue;
+        NativeSettingsDialog dialog(setting);
+        auto *form = dialog.findChild<QFormLayout *>();
+        if (!form || form->rowCount() == 0)
+            return 6;
+    }
 
     SettingsHubPage windowsPage(SettingsSection::SecurityMaintenance, nullptr);
     auto *windowsUpdate = windowsPage.findChild<QLabel *>(

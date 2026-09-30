@@ -45,6 +45,7 @@ private:
         QColor  titlebar;   // active window titlebar
         QColor  accent;     // selection colour
         QColor  text;       // normal foreground
+        QStringList aliases; // visually identical installed schemes
     };
 
     static QList<Scheme> gatherSchemes();
