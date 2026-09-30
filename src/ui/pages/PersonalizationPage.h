@@ -60,6 +60,7 @@ private:
 
     QList<Scheme>         m_schemes;
     QString               m_currentId;
+    bool                  m_applyInProgress = false;
     QList<QFrame *>       m_frames;
     QHash<QObject *, int> m_frameToIndex;
 };

@@ -140,6 +140,8 @@ The Aero7 Default Programs and Folder Options pages handle their supported
 controls. Advanced default-app, file-association, folder-location,
 removable-device, recent-item, and web-search settings temporarily open their
 working KDE modules.
+Folder Options distinguishes saved choices from a failed or missing file-index
+service instead of reporting every Apply as successful.
 
 ## User Accounts
 
@@ -162,6 +164,8 @@ and a link that opens Optional Features with the correct item selected.
 - Uses Aero7 pages for the desktop theme, wallpaper, and fonts. Icon themes,
   pointers, welcome animation, title bars, effects, and window behavior
   temporarily open their working KDE modules.
+- A theme swatch is marked selected only after the color-scheme command succeeds;
+  a failed apply shows an error and keeps the previous selection.
 - Sound configuration uses the native Aero7 Sound page.
 - Lock-screen timeout and resume behavior use the installed KDE lock-screen
   module until an Aero7 editor is verified.

@@ -11,6 +11,7 @@
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -27,7 +28,8 @@ QGroupBox *optionGroup(const QString &title, QVBoxLayout **contents)
 
 QString configPath(const QString &name)
 {
-    return QDir::homePath() + QStringLiteral("/.config/") + name;
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+        + QLatin1Char('/') + name;
 }
 } // namespace
 
@@ -98,6 +100,8 @@ FolderOptionsPage::FolderOptionsPage(QScrollArea *sidebar, QWidget *parent)
 
     auto *footer = new QHBoxLayout;
     m_status = new QLabel;
+    m_status->setObjectName(QStringLiteral("folderOptionsStatus"));
+    m_status->setWordWrap(true);
     m_status->setStyleSheet(QStringLiteral("color:#4B4B4B;"));
     footer->addWidget(m_status, 1);
     auto *defaults = new QPushButton(QStringLiteral("Restore Defaults"));
@@ -105,6 +109,7 @@ FolderOptionsPage::FolderOptionsPage(QScrollArea *sidebar, QWidget *parent)
             &FolderOptionsPage::restoreDefaults);
     footer->addWidget(defaults);
     auto *apply = new QPushButton(QStringLiteral("Apply"));
+    apply->setObjectName(QStringLiteral("folderOptionsApply"));
     connect(apply, &QPushButton::clicked, this, &FolderOptionsPage::applyState);
     footer->addWidget(apply);
     content->addLayout(footer);
@@ -149,9 +154,30 @@ void FolderOptionsPage::applyState()
     QSettings baloo(configPath(QStringLiteral("baloofilerc")), QSettings::IniFormat);
     baloo.beginGroup(QStringLiteral("Basic Settings"));
     baloo.setValue(QStringLiteral("Indexing-Enabled"), m_indexContent->isChecked());
-    QProcess::startDetached(QStringLiteral("balooctl6"),
-                            {m_indexContent->isChecked() ? QStringLiteral("enable")
-                                                        : QStringLiteral("disable")});
+    for (QSettings *settings : {&globals, &dolphin, &trash, &baloo}) {
+        settings->sync();
+        if (settings->status() != QSettings::NoError) {
+            m_status->setText(QStringLiteral("Could not save all folder settings. Check file permissions."));
+            return;
+        }
+    }
+
+    const QString tool = QStandardPaths::findExecutable(QStringLiteral("balooctl6"));
+    if (tool.isEmpty()) {
+        m_status->setText(QStringLiteral("Folder choices saved, but the file-index service is not installed."));
+        return;
+    }
+    QProcess indexer;
+    indexer.start(tool, {m_indexContent->isChecked() ? QStringLiteral("enable")
+                                                   : QStringLiteral("disable")});
+    if (!indexer.waitForStarted(2000) || !indexer.waitForFinished(5000)
+        || indexer.exitStatus() != QProcess::NormalExit || indexer.exitCode() != 0) {
+        const QString detail = QString::fromUtf8(indexer.readAllStandardError()).trimmed();
+        m_status->setText(detail.isEmpty()
+            ? QStringLiteral("Folder choices saved, but the file index could not be changed.")
+            : QStringLiteral("Folder choices saved, but the file index failed: %1").arg(detail));
+        return;
+    }
     m_status->setText(QStringLiteral("Folder settings applied."));
 }
 

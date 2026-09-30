@@ -689,14 +689,49 @@ PersonalizationPage::PersonalizationPage(QScrollArea *sidebar, QWidget *parent)
 
 void PersonalizationPage::applyScheme(int index)
 {
-    if (index < 0 || index >= m_schemes.size())
+    if (m_applyInProgress || index < 0 || index >= m_schemes.size())
         return;
-    const Scheme &s = m_schemes[index];
-    // plasma-apply-colorscheme writes the user's own config; no polkit needed.
-    QProcess::startDetached(QStringLiteral("plasma-apply-colorscheme"),
-                            { s.id });
-    m_currentId = s.id;
-    refreshHighlight();
+    const QString id = m_schemes[index].id;
+    const QString tool = QStandardPaths::findExecutable(
+        QStringLiteral("plasma-apply-colorscheme"));
+    if (tool.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("Personalization"),
+            QStringLiteral("The color-scheme backend is not installed."));
+        return;
+    }
+
+    // Wait for the real backend result before marking a swatch selected.
+    // A failed command must never masquerade as an applied theme.
+    m_applyInProgress = true;
+    setCursor(Qt::WaitCursor);
+    auto *process = new QProcess(this);
+    connect(process, &QProcess::errorOccurred, this,
+            [this, process](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart)
+            return;
+        m_applyInProgress = false;
+        unsetCursor();
+        QMessageBox::warning(this, QStringLiteral("Personalization"),
+            QStringLiteral("Could not start the color-scheme backend: %1")
+                .arg(process->errorString()));
+        process->deleteLater();
+    });
+    connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
+            this, [this, process, id](int exitCode, QProcess::ExitStatus status) {
+        m_applyInProgress = false;
+        unsetCursor();
+        if (status == QProcess::NormalExit && exitCode == 0) {
+            m_currentId = id;
+            refreshHighlight();
+        } else {
+            const QString error = QString::fromUtf8(process->readAllStandardError()).trimmed();
+            QMessageBox::warning(this, QStringLiteral("Personalization"),
+                error.isEmpty() ? QStringLiteral("The selected theme could not be applied.")
+                                : error);
+        }
+        process->deleteLater();
+    });
+    process->start(tool, {id});
 }
 
 void PersonalizationPage::refreshHighlight()

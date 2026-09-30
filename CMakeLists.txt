@@ -306,6 +306,25 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
 
+    add_executable(folder-options-apply-test
+        tests/FolderOptionsApplyTest.cpp
+        src/ui/pages/FolderOptionsPage.h
+        src/ui/pages/FolderOptionsPage.cpp
+    )
+    target_include_directories(folder-options-apply-test PRIVATE
+        src/ui
+        src/ui/pages
+    )
+    target_link_libraries(folder-options-apply-test PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Aero7Qt::Aero7Qt
+    )
+    add_test(NAME folder-options-apply-test COMMAND folder-options-apply-test)
+    set_tests_properties(folder-options-apply-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp
         resources/icons.qrc
@@ -338,5 +357,16 @@ if(BUILD_TESTING)
         Qt6::Widgets Qt6::Test Qt6::Concurrent Aero7Qt::Aero7Qt)
     add_test(NAME personalization-open-test COMMAND personalization-open-test)
     set_tests_properties(personalization-open-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+
+    add_executable(personalization-scheme-apply-test
+        tests/PersonalizationSchemeApplyTest.cpp
+        src/ui/LinkLabel.h
+        src/ui/pages/PersonalizationPage.cpp)
+    target_include_directories(personalization-scheme-apply-test PRIVATE src/ui src/ui/pages)
+    target_link_libraries(personalization-scheme-apply-test PRIVATE
+        Qt6::Widgets Qt6::Test Qt6::Concurrent Aero7Qt::Aero7Qt)
+    add_test(NAME personalization-scheme-apply-test COMMAND personalization-scheme-apply-test)
+    set_tests_properties(personalization-scheme-apply-test PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
 endif()
