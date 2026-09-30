@@ -60,13 +60,16 @@ opened visually in the VM. Its advanced plan links now target the installed KDE
 Power Management module, while the wake-password link targets Lock Screen.
 The information link now explains the plans instead of doing nothing.
 
-Default Programs was checked in the same VM. Its installed Internet Explorer
-launcher reports no compatible browser backends there, so a real default-app
-switch cannot be accepted on that image. The updated page's controlled-launcher
-test ran inside the VM: saved selections were read back, ignored writes were
-rejected, malformed status disabled Save, and the bundled Internet Explorer
-icon loaded without the previous missing-icon warning. A browser-equipped VM
-still needs a real association-change and restore check.
+Default Programs was checked in the same VM. The base image had no compatible
+browser, so Falkon was installed only in the separate QA overlay. The updated
+page then saved Falkon as the Internet Explorer backend and the installed
+launcher read back `org.kde.falkon.desktop`; the test exited 0. Controlled
+launcher cases in that VM also verified that ignored writes are rejected,
+malformed status disables Save, policy locks disable edits, and the bundled
+Internet Explorer icon loads without a missing-icon warning. The test log had
+no Qt warnings after supplying the normal sidebar scaffold. Switching the
+actual system-wide default associations off and back on remains a separate
+acceptance check; the VM run kept the pre-existing default-association state.
 
 ## Remaining functional acceptance
 

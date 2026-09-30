@@ -3,8 +3,12 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
+#include <QProcess>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -53,7 +57,7 @@ esac
         qputenv("AERO7_IE_TEST_BACKEND", backendState.toUtf8());
         qputenv("AERO7_IE_TEST_DEFAULT", defaultState.toUtf8());
 
-        DefaultProgramsPage page(nullptr);
+        DefaultProgramsPage page(new QScrollArea);
         auto *browser = page.findChild<QComboBox *>(
             QStringLiteral("internetExplorerBackend"));
         auto *makeDefault = page.findChild<QCheckBox *>(
@@ -108,7 +112,7 @@ fi
                                       | QFileDevice::WriteOwner
                                       | QFileDevice::ExeOwner));
         qputenv("AERO7_IE_EXECUTABLE", launcher.toUtf8());
-        DefaultProgramsPage page(nullptr);
+        DefaultProgramsPage page(new QScrollArea);
         auto *browser = page.findChild<QComboBox *>(
             QStringLiteral("internetExplorerBackend"));
         auto *save = page.findChild<QPushButton *>(
@@ -125,7 +129,7 @@ fi
         QVERIFY(script.open(QIODevice::WriteOnly | QIODevice::Truncate));
         script.write("#!/bin/sh\nprintf 'invalid JSON\\n'\n");
         script.close();
-        DefaultProgramsPage invalid(nullptr);
+        DefaultProgramsPage invalid(new QScrollArea);
         auto *invalidSave = invalid.findChild<QPushButton *>(
             QStringLiteral("saveInternetExplorerDefaults"));
         auto *invalidStatus = invalid.findChild<QLabel *>(
@@ -140,7 +144,7 @@ fi
 printf '%s\n' '{"selectedDesktopId":"firefox.desktop","isDefault":false,"policyLocked":true,"backends":[{"desktopId":"firefox.desktop","displayName":"Firefox"}]}'
 )SH");
         script.close();
-        DefaultProgramsPage locked(nullptr);
+        DefaultProgramsPage locked(new QScrollArea);
         auto *lockedBrowser = locked.findChild<QComboBox *>(
             QStringLiteral("internetExplorerBackend"));
         auto *lockedDefault = locked.findChild<QCheckBox *>(
@@ -155,6 +159,40 @@ printf '%s\n' '{"selectedDesktopId":"firefox.desktop","isDefault":false,"policyL
         QVERIFY(!lockedDefault->isEnabled());
         QVERIFY(!lockedSave->isEnabled());
         qunsetenv("AERO7_IE_EXECUTABLE");
+    }
+
+    void savesInstalledBackendInVm()
+    {
+        if (!qEnvironmentVariableIsSet("AERO7_IE_REAL_BACKEND"))
+            QSKIP("Real browser-backend changes run only in an isolated Aero7 VM.");
+        qunsetenv("AERO7_IE_EXECUTABLE");
+        DefaultProgramsPage page(new QScrollArea);
+        auto *browser = page.findChild<QComboBox *>(
+            QStringLiteral("internetExplorerBackend"));
+        auto *save = page.findChild<QPushButton *>(
+            QStringLiteral("saveInternetExplorerDefaults"));
+        auto *status = page.findChild<QLabel *>(QStringLiteral("internetExplorerStatus"));
+        QVERIFY(browser);
+        QVERIFY(save);
+        QVERIFY(status);
+        QTRY_VERIFY(browser->count() > 0);
+        QVERIFY(save->isEnabled());
+        const QString requested = browser->currentData().toString();
+        QVERIFY(!requested.isEmpty());
+        save->click();
+        QCOMPARE(status->text(), QStringLiteral("Internet Explorer defaults were updated."));
+
+        QProcess launcher;
+        launcher.start(QStringLiteral("aero7-internet-explorer"),
+                       {QStringLiteral("--status-json")});
+        QVERIFY(launcher.waitForStarted(3000));
+        QVERIFY(launcher.waitForFinished(10000));
+        QCOMPARE(launcher.exitCode(), 0);
+        const QJsonDocument document = QJsonDocument::fromJson(
+            launcher.readAllStandardOutput());
+        QVERIFY(document.isObject());
+        QCOMPARE(document.object().value(QStringLiteral("selectedDesktopId")).toString(),
+                 requested);
     }
 };
 
