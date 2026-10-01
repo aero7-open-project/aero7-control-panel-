@@ -233,6 +233,62 @@ graphical launch still logged the VM's missing NVIDIA VDPAU-library warning;
 no journal-reader failure occurred. This does not establish an error-free
 overall session or fix the separate KDE module defects.
 
+### October 1 Folder Options follow-up
+
+The old Folder Options page reported success after writing
+`[%General]/ShowHiddenFiles` and `ShowPreview` in `dolphinrc`; the actual File
+Explorer still showed only nine non-hidden home items. Its Baloo group was
+also incorrectly serialized as `[Basic%20Settings]`. These preferences were
+not the backend settings advertised by the controls.
+
+The page now uses KF6 ConfigCore and the maintained File Explorer fork's real
+global view-properties location. It reads `.directory` view groups or existing
+`user.kde.fm.viewproperties#1` metadata and preserves unrelated view settings
+when saving the canonical hidden-file and preview defaults. Merely opening
+the page does not write the metadata. Only the old ineffective keys are
+removed; other Dolphin and Baloo settings are retained. Failure to read view
+metadata, create the defaults directory, sync a configuration, or run the
+indexing helper stays visible instead of becoming a blanket success.
+
+Graphical testing of the rebuilt binary in the disposable Aero7 VM at
+1920×1080 verified both directions:
+
+- Show hidden files enabled: a newly opened File Explorer displayed 18 home
+  items, including `.cache`, `.config`, `.local`, `.ssh` and dotfiles. Its actual
+  Show Hidden Files action was checked. Restoring defaults and reopening it
+  displayed nine items with that action unchecked.
+- Previews disabled/enabled: the actual File Explorer Show Previews action
+  matched both choices. This verifies the backend action, not every thumbnail
+  provider or file format.
+- Indexing disabled: `balooctl6 status` independently reported disabled.
+  Restoring defaults restarted the indexer; readback showed it indexing file
+  contents with zero failed files at that moment.
+- SingleClick changed to true and back to false with independent
+  `kreadconfig6` readback. Physical single/double-click interaction is still
+  an acceptance item; a configuration read alone does not certify it.
+
+The Trash test found a second backend mismatch: File Explorer's Windows-style
+prompt reads `trashrc` `[Aero7]/ConfirmDelete`, independently of KIO's
+`Confirmations/ConfirmTrash`. The checkbox now reads the Aero7 preference when
+present and saves both preferences. Size limits and immediate-delete choices
+are preserved; the checkbox is unavailable in immediate-delete mode rather
+than claiming to govern permanent deletion. With confirmation off, the actual
+File Explorer Move to Trash action moved one disposable fixture into the Trash
+without a dialog. After restoring defaults, the same action displayed the
+Windows-style confirmation. Cancelling preserved the file. The fixture was
+restored and retained in the VM QA directory; no user file was deleted.
+
+The focused test passes on the host and in the VM. It isolates both XDG config
+and data directories, covers real xattr-backed metadata (or the legacy fallback
+when unsupported), checks no writes on page construction, preservation of
+unrelated settings, cleanup of ineffective keys, matching File Explorer's own
+QSettings reader, immediate-delete safety, and missing/failed/successful index
+helpers. The full 24-test host suite passes. The graphical log still contains
+the VM's missing NVIDIA VDPAU-library warning. A separate `kscreen-doctor`
+probe launched without graphical environment variables produced a Qt platform
+abort; rerunning with the real session environment worked. Neither is reported
+as a Folder Options crash or an error-free desktop session.
+
 ### Remaining checks
 
 The route smoke checks do **not** prove that all 72 settings persist and

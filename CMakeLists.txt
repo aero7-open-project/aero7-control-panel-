@@ -9,6 +9,7 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia Concurrent DBus OpenGL Network Test)
 find_package(KF6WidgetsAddons REQUIRED)
+find_package(KF6Config REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Aero7Qt REQUIRED)
@@ -98,6 +99,7 @@ target_link_libraries(controlpanel PRIVATE
     Qt6::DBus
     Qt6::OpenGL
     KF6::WidgetsAddons
+    KF6::ConfigCore
     ZLIB::ZLIB
     OpenSSL::Crypto
     Aero7Qt::Aero7Qt
@@ -323,6 +325,7 @@ if(BUILD_TESTING)
     target_link_libraries(folder-options-apply-test PRIVATE
         Qt6::Widgets
         Qt6::Concurrent
+        KF6::ConfigCore
         Aero7Qt::Aero7Qt
     )
     add_test(NAME folder-options-apply-test COMMAND folder-options-apply-test)

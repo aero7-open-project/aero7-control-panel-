@@ -28,10 +28,11 @@ not pretend to be working controls.
 | Power Options | Plans and battery | Changes real power-profiles-daemon profiles and reads battery, charging and remaining-time data from UPower; advanced lid/sleep policy remains a separate PowerDevil bridge |
 | Personalization | Color scheme tiles | Applies an installed color scheme; the UI now calls these color schemes rather than claiming to change a complete theme |
 | Personalization | Background, color, sounds, lock screen | Applies wallpaper and color schemes directly, opens the native Aero7 Sound dialog, and writes the real Plasma lock timeout/resume settings |
-| User Accounts | Change password | Opens `passwd` in the configured terminal, with a KDE Users fallback |
-| User Accounts | Change picture | Writes the user's standard `~/.face.icon` image |
-| User Accounts | Change display name | Uses `usermod -c` through polkit after confirmation |
-| User Accounts | Manage users/account type | Creates, removes and changes local accounts through authenticated Linux account tools; account removal preserves the home folder |
+| User Accounts | Password, picture, display name, account type and account management | Opens the checked KDE Users module temporarily. The native overview reads the current account and avatar. Creation/removal, password and account-type changes still require VM acceptance; clearing an existing display name is a known upstream defect. |
+| Folder Options | Single/double click | Writes KDE's real `SingleClick` preference using KConfig notifications |
+| Folder Options | Hidden files / previews | Reads File Explorer's global view metadata, preserving xattr-backed view choices, and saves the actual `Settings/HiddenFilesShown` and `Dolphin/PreviewsShown` defaults. Reopen File Explorer; custom per-folder views are preserved. |
+| Folder Options | Trash confirmation | Saves both KIO's `Confirmations/ConfirmTrash` and Aero7 File Explorer's `Aero7/ConfirmDelete` Recycle Bin preference. Unavailable when the bin is configured for immediate permanent deletion; that mode and its separate confirmation are not changed. |
+| Folder Options | File indexing | Saves Baloo's actual `[Basic Settings]` group and invokes `balooctl6 enable/disable`, checking its result and reporting missing/failed helpers |
 | Date and Time | Date, time, time zone and Internet time | Uses the existing native dialog and authenticated system tools |
 | Sound | Devices/defaults/volume/mute/themes | Uses PipeWire/PulseAudio for live devices and properties, and writes Plasma's real sound-theme configuration; unsupported call ducking is labelled honestly instead of saving a fake preference |
 | Performance | Rate/rerun/details | Uses the existing Aero7 benchmark workflow |
@@ -41,10 +42,9 @@ not pretend to be working controls.
 
 ## Catalog-backed settings
 
-The group pages for Display, Network, Region and Language, Taskbar and Start
-Menu, Default Programs, Input Devices, Startup and Shutdown, Window Behavior,
-Security and Maintenance, Storage, Internet Options, Folder Options, AutoPlay,
-and Backup and Restore are generated from the central catalog.
+Settings destinations and the advanced group pages are registered in the
+central catalog. Native pages include Display, Taskbar and Start Menu,
+Default Programs, Folder Options, Power Options and Window Snapping.
 
 Each row contains:
 
@@ -54,10 +54,12 @@ Each row contains:
 4. a native/partial/compatibility status;
 5. a working action button.
 
-Desktop-owned settings open an Aero7 property sheet and write the established
-Plasma/KWin/KIO configuration. Control Panel does not open the System Settings
-home page or an individual KDE KCM interface. Historical module identifiers
-remain metadata for documentation and debugging.
+Verified native controls use Aero7 pages and the established Linux backend.
+The 49 advanced or incomplete catalog entries temporarily open their checked
+KDE module, as approved for this audit, rather than an Aero7 editor that merely
+writes an ineffective preference. Missing modules produce an installation
+explanation. Module availability and successful launch are not proof that
+every upstream control works; see the QA report for acceptance and defects.
 
 See [KDE-SETTINGS-MAP.md](KDE-SETTINGS-MAP.md) for the complete name and module
 mapping.
@@ -93,5 +95,6 @@ iptables version” failure dialog.
 Edit one entry in `src/ui/SettingsCatalog.cpp`. Keep the exact Windows 7 public
 wording in `aeroName`, and keep `kdeName` and `kdeModule` as the upstream trace.
 Add a native page, property sheet, applet or approved companion target; update the
-mapping document, and run all four CTest tests. Navigation must never depend on
+mapping document, and run the complete CTest suite (currently 24 tests).
+Navigation must never depend on
 matching the visible label; stable `PageId` values are used for internal routes.
