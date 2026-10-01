@@ -810,9 +810,6 @@ void MainWindow::showEntry(const QString &entry)
                              this, [this](PageId id) {
                                  navigateTo(PageRegistry::pathFor(id));
                              }, Qt::QueuedConnection);
-            QObject::connect(users, &UserAccountsPage::refreshRequested,
-                             this, [this, entry]() { showEntry(entry); },
-                             Qt::QueuedConnection);
             m_scroll->setWidget(users);
         } else if (entry == kParentalControlsPath) {
             auto *sidebar = buildSubpageSidebar({

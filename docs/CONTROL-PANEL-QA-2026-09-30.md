@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Automated tests | 22 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, firewall-backend selection, and Linux Update command failures. |
+| Automated tests | 23 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, firewall-backend selection, Linux Update command failures, and User Accounts module routing. |
 
 ## VM evidence
 
@@ -97,6 +97,18 @@ selected yay cache directories were removed. No real packages were installed
 in this QA run, so full pacman and AUR installation still require VM
 acceptance with disposable package sources and a graphical Polkit session.
 
+User Accounts previously exposed native account-edit commands that had not
+been verified end to end, including a create-account path that could claim a
+password window opened when launch failed. All five account-edit links now
+open the installed KDE Users module (`kcm_users`) temporarily; the Aero7
+overview still reads the local account and avatar. A controlled fake-module
+test verified the five links and the unavailable-module sidebar state without
+creating, deleting, or modifying any real account. The real module is present
+on the development host. The rebuilt Control Panel page and the real Users
+module both remained running for five seconds offscreen with no error output.
+Their graphical appearance and account changes still need disposable-VM
+acceptance.
+
 ## Remaining functional acceptance
 
 The route smoke checks do **not** prove that all 72 settings persist and
@@ -133,6 +145,9 @@ than presenting stale package data as a successful check. Selective repository
 updates are blocked to avoid an unsupported partial Arch upgrade; selected
 AUR updates remain optional. The Change settings sidebar entry and actual
 package-install path remain incomplete acceptance items.
+User Accounts currently hands edits to the KDE Users module as the approved
+temporary backend. Its native replacement cannot be called complete until
+privileged account changes, errors, and readback are safely tested in a VM.
 
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown

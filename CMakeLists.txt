@@ -415,6 +415,27 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
 
+    add_executable(user-accounts-bridge-test
+        resources/icons.qrc
+        tests/UserAccountsBridgeTest.cpp
+        src/ui/LinkLabel.h
+        src/ui/KdeSettingsBridge.cpp
+        src/ui/pages/UserAccountsPage.h
+        src/ui/pages/UserAccountsPage.cpp
+    )
+    qt_add_resources(user-accounts-bridge-test "aero7-user-accounts-pack-icons-test"
+        PREFIX "/aero7/pack"
+        BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+        FILES ${AERO7_PACK_ICON_FILES})
+    target_include_directories(user-accounts-bridge-test PRIVATE
+        src/ui src/ui/pages)
+    target_link_libraries(user-accounts-bridge-test PRIVATE
+        Qt6::Widgets Qt6::Test Qt6::Concurrent Aero7Qt::Aero7Qt)
+    add_test(NAME user-accounts-bridge-test COMMAND user-accounts-bridge-test)
+    set_tests_properties(user-accounts-bridge-test PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
     add_executable(icon-independence-test
         tests/IconIndependenceTest.cpp
         resources/icons.qrc

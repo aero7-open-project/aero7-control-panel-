@@ -28,7 +28,6 @@ public:
 
 signals:
     void navigateRequested(PageId page);
-    void refreshRequested();
 
 private:
     struct Account {
@@ -38,11 +37,4 @@ private:
         QString picturePath;   // avatar image path, empty if none found
     };
     static Account gatherAccount();
-    static QList<Account> gatherAccounts();
-    void changePicture();
-    void changeDisplayName(const Account &account);
-    void changeAccountType(const Account &account, bool refreshPage = true);
-    void manageAccounts();
-    bool runAccountCommand(const QStringList &arguments,
-                           const QString &failureMessage);
 };
