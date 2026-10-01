@@ -17,6 +17,7 @@
 #include <QScreen>
 #include <QScrollArea>
 #include <QSet>
+#include <QSignalBlocker>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QtMath>
@@ -428,12 +429,43 @@ DisplayPage::DisplayPage(QScrollArea *sidebar, QWidget *parent)
         if (!loadConfiguration(&error))
             setStatus(error, true);
     });
-    auto markDirty = [this]() { m_apply->setEnabled(true); };
-    connect(m_resolution, &QComboBox::currentIndexChanged, this, markDirty);
-    connect(m_orientation, &QComboBox::currentIndexChanged, this, markDirty);
-    connect(m_scale, &QComboBox::currentIndexChanged, this, markDirty);
-    connect(m_multiple, &QComboBox::currentIndexChanged, this, markDirty);
-    connect(m_primary, &QCheckBox::toggled, this, markDirty);
+    connect(m_resolution, &QComboBox::currentIndexChanged, this, [this]() {
+        const int index = m_display->currentIndex();
+        if (index < 0 || index >= m_outputs.size())
+            return;
+        m_outputs[index].currentModeId = m_resolution->currentData().toString();
+        m_apply->setEnabled(true);
+    });
+    connect(m_orientation, &QComboBox::currentIndexChanged, this, [this]() {
+        const int index = m_display->currentIndex();
+        if (index < 0 || index >= m_outputs.size())
+            return;
+        m_outputs[index].rotation = rotationValue(m_orientation->currentData().toString());
+        m_apply->setEnabled(true);
+    });
+    connect(m_scale, &QComboBox::currentIndexChanged, this, [this]() {
+        const int index = m_display->currentIndex();
+        if (index < 0 || index >= m_outputs.size())
+            return;
+        m_outputs[index].scale = m_scale->currentData().toDouble();
+        m_apply->setEnabled(true);
+    });
+    connect(m_multiple, &QComboBox::currentIndexChanged, this,
+            [this]() { m_apply->setEnabled(true); });
+    connect(m_primary, &QCheckBox::toggled, this, [this](bool checked) {
+        if (!checked)
+            return;
+        const int index = m_display->currentIndex();
+        if (index < 0 || index >= m_outputs.size())
+            return;
+        for (int other = 0; other < m_outputs.size(); ++other) {
+            if (other != index && m_outputs[other].priority == 1)
+                m_outputs[other].priority = 2;
+        }
+        m_outputs[index].priority = 1;
+        m_primary->setEnabled(false);
+        m_apply->setEnabled(true);
+    });
 
     QString error;
     if (!loadConfiguration(&error)) {
@@ -564,7 +596,11 @@ void DisplayPage::populateOutputControls()
     const Output &output = m_outputs.at(outputIndex);
 
     m_monitorDiagram->setSelected(outputIndex);
-    m_resolution->blockSignals(true);
+    const QSignalBlocker resolutionBlocker(m_resolution);
+    const QSignalBlocker orientationBlocker(m_orientation);
+    const QSignalBlocker scaleBlocker(m_scale);
+    const QSignalBlocker multipleBlocker(m_multiple);
+    const QSignalBlocker primaryBlocker(m_primary);
     m_resolution->clear();
     QVector<Mode> modes = output.modes;
     std::sort(modes.begin(), modes.end(), [](const Mode &left, const Mode &right) {
@@ -598,7 +634,6 @@ void DisplayPage::populateOutputControls()
     }
     if (currentMode >= 0)
         m_resolution->setCurrentIndex(currentMode);
-    m_resolution->blockSignals(false);
     const int orientation = m_orientation->findData(rotationName(output.rotation));
     m_orientation->setCurrentIndex(qMax(0, orientation));
     int scaleIndex = -1;
@@ -614,6 +649,7 @@ void DisplayPage::populateOutputControls()
     }
     m_scale->setCurrentIndex(scaleIndex);
     m_primary->setChecked(output.priority == 1);
+    m_primary->setEnabled(output.priority != 1);
     m_multiple->setCurrentIndex(0);
 }
 
@@ -668,17 +704,33 @@ void DisplayPage::applyChanges()
         }
     }
 
-    if (!m_resolution->currentData().toString().isEmpty())
-        arguments << outputArgument(selected.name,
-                                    QStringLiteral("mode.%1").arg(m_resolution->currentData().toString()));
-    arguments << outputArgument(selected.name,
-                                QStringLiteral("scale.%1")
-                                    .arg(m_scale->currentData().toDouble(), 0, 'g', 4));
-    arguments << outputArgument(selected.name,
-                                QStringLiteral("rotation.%1")
-                                    .arg(m_orientation->currentData().toString()));
-    if (m_primary->isChecked())
-        arguments << outputArgument(selected.name, QStringLiteral("priority.1"));
+    for (int index = 0; index < m_outputs.size(); ++index) {
+        const Output &pending = m_outputs.at(index);
+        const Output &original = m_originalOutputs.at(index);
+        const bool current = index == outputIndex;
+        if (!pending.currentModeId.isEmpty()
+            && (current || pending.currentModeId != original.currentModeId)) {
+            arguments << outputArgument(pending.name,
+                                        QStringLiteral("mode.%1").arg(pending.currentModeId));
+        }
+        if (current || qAbs(pending.scale - original.scale) > 0.001) {
+            arguments << outputArgument(pending.name,
+                                        QStringLiteral("scale.%1").arg(pending.scale, 0, 'g', 4));
+        }
+        if (current || pending.rotation != original.rotation) {
+            arguments << outputArgument(pending.name,
+                                        QStringLiteral("rotation.%1").arg(rotationName(pending.rotation)));
+        }
+        if (multiple != QLatin1String("extend") && pending.position != original.position) {
+            arguments << outputArgument(pending.name,
+                                        QStringLiteral("position.%1,%2")
+                                            .arg(pending.position.x()).arg(pending.position.y()));
+        }
+        if (pending.priority > 0 && pending.priority != original.priority) {
+            arguments << outputArgument(pending.name,
+                                        QStringLiteral("priority.%1").arg(pending.priority));
+        }
+    }
 
     QString error;
     if (!runDoctor(arguments, &error)) {

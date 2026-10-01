@@ -130,5 +130,25 @@ EOF
     if (!status->text().contains(QLatin1String("Could not restore"))
         || !status->text().contains(QLatin1String("simulated rollback failure")))
         return 13;
+
+    page.findChild<QPushButton *>(QStringLiteral("displayCancel"))->click();
+    auto *display = page.findChild<QComboBox *>(QStringLiteral("displaySelector"));
+    resolution->setCurrentIndex(1);
+    display->setCurrentIndex(1);
+    display->setCurrentIndex(0);
+    if (resolution->currentData().toString() != QLatin1String("3"))
+        return 14;
+    display->setCurrentIndex(1);
+    if (!apply->isEnabled())
+        return 15;
+    QTimer::singleShot(0, []() {
+        auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        if (dialog)
+            dialog->button(QMessageBox::Yes)->click();
+    });
+    apply->click();
+    if (!doctorLog.open(QIODevice::ReadOnly)
+        || !doctorLog.readAll().contains("output.Virtual-1.mode.3"))
+        return 16;
     return 0;
 }
