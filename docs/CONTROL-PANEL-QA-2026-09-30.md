@@ -289,6 +289,39 @@ probe launched without graphical environment variables produced a Qt platform
 abort; rerunning with the real session environment worked. Neither is reported
 as a Folder Options crash or an error-free desktop session.
 
+### October 1 Default Programs association follow-up
+
+Installed signed Falkon 26.08.1-1 only in the disposable VM; its Qt dependencies
+were already installed. The real-backend Qt test now shows the native Default
+Programs page and exercises its checkbox/Save controls against the installed
+Internet Explorer launcher and `xdg-mime`, rather than a fake association
+writer. It seeds Falkon as the earlier default, enables Internet Explorer,
+independently queries all three actual HTTP, HTTPS and HTML defaults, clears
+the checkbox, and verifies all three return to Falkon. Cleanup attempts every
+original association restoration and restores the original launcher config,
+even when an assertion fails. This opt-in test must only run in an isolated VM.
+
+The additional fresh-install case confirms that no earlier browser can be
+restored when none was recorded. It shows an explanatory error and verifies
+that all three Internet Explorer associations remain unchanged. The page now
+explains that case and directs the user to the temporary Default Programs
+module to choose another browser. It also keeps browser/default/Save controls
+disabled before the asynchronous initial status load; the extended test exposed
+their previously enabled-before-load state. The test's original premature
+read of that state failed, then passed after this startup guard was added.
+
+The selected association test passes in the final graphical-session VM run
+(Qt reports three pass entries including setup/cleanup), with zero failures
+or skips (about 6.4 seconds). An independent final launcher
+status check reports the original Internet Explorer default restored, with no
+stored selected backend. VM probes initially omitted `KDE_SESSION_VERSION` and
+produced an `xdg-mime` integer-comparison warning; the final run uses the actual
+Plasma 6 session variables. The guest's `xdg-mime` KDE setter also invokes an
+absent `qtpaths` alias, but its generic MIME writer succeeds and independent
+readbacks verified the requested defaults. This warning is not treated as an
+error-free upstream implementation. Browser rendering, every file association,
+and visual inspection of every Default Programs entry remain separate checks.
+
 ### Remaining checks
 
 The route smoke checks do **not** prove that all 72 settings persist and

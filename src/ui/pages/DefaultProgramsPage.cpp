@@ -79,6 +79,7 @@ DefaultProgramsPage::DefaultProgramsPage(QScrollArea *sidebar, QWidget *parent)
     browserRow->addWidget(new QLabel(QStringLiteral("Browser used by Internet Explorer:")));
     m_browser = new QComboBox;
     m_browser->setObjectName(QStringLiteral("internetExplorerBackend"));
+    m_browser->setEnabled(false);
     m_browser->setMinimumWidth(240);
     browserRow->addWidget(m_browser, 1);
     cardLayout->addLayout(browserRow);
@@ -92,6 +93,11 @@ DefaultProgramsPage::DefaultProgramsPage(QScrollArea *sidebar, QWidget *parent)
     m_defaultBrowser = new QCheckBox(
         QStringLiteral("Make Internet Explorer my default web browser"));
     m_defaultBrowser->setObjectName(QStringLiteral("internetExplorerDefault"));
+    m_defaultBrowser->setEnabled(false);
+    m_defaultBrowser->setToolTip(QStringLiteral(
+        "Clearing this choice restores the browser associations recorded before "
+        "Internet Explorer became default. If no earlier browser is recorded, "
+        "choose another browser using the Default Programs settings module."));
     cardLayout->addWidget(m_defaultBrowser);
 
     auto *actions = new QHBoxLayout;
@@ -111,6 +117,7 @@ DefaultProgramsPage::DefaultProgramsPage(QScrollArea *sidebar, QWidget *parent)
     actions->addStretch(1);
     m_apply = new QPushButton(QStringLiteral("Save changes"));
     m_apply->setObjectName(QStringLiteral("saveInternetExplorerDefaults"));
+    m_apply->setEnabled(false);
     connect(m_apply, &QPushButton::clicked,
             this, &DefaultProgramsPage::applySelection);
     actions->addWidget(m_apply);
@@ -241,9 +248,14 @@ void DefaultProgramsPage::applySelection()
             ? QStringLiteral("--set-default") : QStringLiteral("--restore-defaults");
         const CommandResult defaults = runLauncher({option});
         if (!defaults.started || defaults.exitCode != 0) {
-            setStatus(QString::fromUtf8(defaults.error).trimmed().isEmpty()
+            const QString detail = QString::fromUtf8(defaults.error).trimmed();
+            setStatus(!requestedDefault && detail.contains(QStringLiteral("No previous browser default"))
+                ? QStringLiteral("No previous browser default was recorded. Internet Explorer "
+                                 "is still the default. Choose another browser in the "
+                                 "Default Programs settings module.")
+                : detail.isEmpty()
                 ? QStringLiteral("The default web associations could not be changed.")
-                : QString::fromUtf8(defaults.error).trimmed(), true);
+                : detail, true);
             return;
         }
     }

@@ -8,7 +8,10 @@
 #include <QLabel>
 #include <QProcess>
 #include <QPushButton>
+#include <QSaveFile>
 #include <QScrollArea>
+#include <QScopeGuard>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -72,6 +75,9 @@ esac
         QVERIFY(details);
         QVERIFY(icon);
         QVERIFY(!icon->pixmap().isNull());
+        QVERIFY(!browser->isEnabled());
+        QVERIFY(!makeDefault->isEnabled());
+        QVERIFY(!save->isEnabled());
         QTRY_COMPARE(browser->count(), 2);
         QCOMPARE(browser->currentData().toString(), QStringLiteral("firefox.desktop"));
         QVERIFY(details->text().contains(QStringLiteral("InPrivate browsing: available")));
@@ -193,6 +199,108 @@ printf '%s\n' '{"selectedDesktopId":"firefox.desktop","isDefault":false,"policyL
         QVERIFY(document.isObject());
         QCOMPARE(document.object().value(QStringLiteral("selectedDesktopId")).toString(),
                  requested);
+    }
+
+    void changesAndRestoresAssociationsInVm()
+    {
+        if (!qEnvironmentVariableIsSet("AERO7_IE_REAL_BACKEND"))
+            QSKIP("Real MIME changes run only in an isolated Aero7 VM with Falkon installed.");
+        qunsetenv("AERO7_IE_EXECUTABLE");
+        QVERIFY2(!QStandardPaths::locate(QStandardPaths::GenericDataLocation,
+                    "applications/org.kde.falkon.desktop").isEmpty(),
+                 "Install signed Falkon in the disposable VM before this test.");
+        const auto mimeCommand = [](const QStringList &arguments) {
+            QProcess command;
+            command.start("xdg-mime", arguments);
+            if (!command.waitForStarted(3000) || !command.waitForFinished(10000)
+                || command.exitStatus() != QProcess::NormalExit || command.exitCode() != 0)
+                return QByteArray();
+            return arguments.constFirst() == "query"
+                ? command.readAllStandardOutput().trimmed() : QByteArray("saved");
+        };
+        const QStringList types{"x-scheme-handler/http", "x-scheme-handler/https", "text/html"};
+        QStringList previous;
+        for (const QString &type : types) {
+            const QByteArray desktop = mimeCommand({"query", "default", type});
+            QVERIFY2(!desktop.isEmpty(), "A valid original default is required for safe rollback.");
+            previous.append(QString::fromUtf8(desktop));
+        }
+        const QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+            + "/aero7/internet-explorer.conf";
+        QFile config(configPath);
+        const bool existed = config.exists();
+        QByteArray originalConfig;
+        if (existed) {
+            QVERIFY(config.open(QIODevice::ReadOnly));
+            originalConfig = config.readAll();
+            config.close();
+        }
+        const auto rollback = qScopeGuard([&] {
+            bool restoredAll = true;
+            for (int i = 0; i < types.size(); ++i)
+                if (mimeCommand({"default", previous.at(i), types.at(i)}).isEmpty())
+                    restoredAll = false;
+            if (existed) {
+                QSaveFile restored(configPath);
+                if (!restored.open(QIODevice::WriteOnly)
+                    || restored.write(originalConfig) != originalConfig.size()
+                    || !restored.commit())
+                    restoredAll = false;
+            } else if (QFile::exists(configPath)) {
+                if (!QFile::remove(configPath))
+                    restoredAll = false;
+            }
+            if (!restoredAll)
+                QTest::qFail("Could not restore every VM browser association/configuration.",
+                             __FILE__, __LINE__);
+        });
+        for (const QString &type : types)
+            QVERIFY(!mimeCommand({"default", "org.kde.falkon.desktop", type}).isEmpty());
+
+        DefaultProgramsPage page(new QScrollArea);
+        page.resize(1000, 680);
+        page.show();
+        auto *browser = page.findChild<QComboBox *>("internetExplorerBackend");
+        auto *makeDefault = page.findChild<QCheckBox *>("internetExplorerDefault");
+        auto *save = page.findChild<QPushButton *>("saveInternetExplorerDefaults");
+        auto *status = page.findChild<QLabel *>("internetExplorerStatus");
+        QVERIFY(browser && makeDefault && save && status);
+        QTRY_VERIFY(browser->count() > 0);
+        const int falkon = browser->findData("org.kde.falkon.desktop");
+        QVERIFY2(falkon >= 0, "Install signed Falkon in the disposable VM before this test.");
+        browser->setCurrentIndex(falkon);
+        QVERIFY(!makeDefault->isChecked());
+        makeDefault->setChecked(true);
+        save->click();
+        QCOMPARE(status->text(), "Internet Explorer defaults were updated.");
+        for (const QString &type : types)
+            QCOMPARE(mimeCommand({"query", "default", type}), QByteArray("aero7-internet-explorer.desktop"));
+
+        makeDefault->setChecked(false);
+        save->click();
+        QCOMPARE(status->text(), "Internet Explorer defaults were updated.");
+        QVERIFY(!makeDefault->isChecked());
+        for (const QString &type : types)
+            QCOMPARE(mimeCommand({"query", "default", type}), QByteArray("org.kde.falkon.desktop"));
+
+        // Fresh Aero7 installs can already use the wrapper without any older
+        // browser recorded. Clearing the checkbox must show that limitation,
+        // never claim to have restored associations that do not exist.
+        QVERIFY(QFile::remove(configPath));
+        for (const QString &type : types)
+            QVERIFY(!mimeCommand({"default", "aero7-internet-explorer.desktop", type}).isEmpty());
+        DefaultProgramsPage noHistory(new QScrollArea);
+        auto *noHistoryDefault = noHistory.findChild<QCheckBox *>("internetExplorerDefault");
+        auto *noHistorySave = noHistory.findChild<QPushButton *>("saveInternetExplorerDefaults");
+        auto *noHistoryStatus = noHistory.findChild<QLabel *>("internetExplorerStatus");
+        QVERIFY(noHistoryDefault && noHistorySave && noHistoryStatus);
+        QTRY_VERIFY(noHistorySave->isEnabled());
+        QVERIFY(noHistoryDefault->isChecked());
+        noHistoryDefault->setChecked(false);
+        noHistorySave->click();
+        QVERIFY(noHistoryStatus->text().contains("No previous browser default"));
+        for (const QString &type : types)
+            QCOMPARE(mimeCommand({"query", "default", type}), QByteArray("aero7-internet-explorer.desktop"));
     }
 };
 
