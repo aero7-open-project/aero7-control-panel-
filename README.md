@@ -70,9 +70,12 @@ Current functionality includes:
 
 - Aero7 Getting Started page with internal links to working settings pages
 - Catalog-driven settings hubs that preserve every original KDE setting name
-- Working KDE-module bridges for advanced settings without a verified Aero7
+- Checked KDE-module bridges for advanced settings without a verified Aero7
   editor; missing modules show a clear error instead of a nonfunctional form
-  (firewalld rules and logs require the `plasma-firewall` package)
+  (firewalld rule editing requires `plasma-firewall`; known upstream policy and
+  traffic-log limitations are explained on the page)
+- Read-only firewalld service diagnostics from the system journal, with visible
+  permission warnings and errors; not a blocked-traffic log
 - Exact 45-item Windows 7 **All Control Panel Items** inventory and five-column order
 - Windows 7 names by default, with a persistent KDE Plasma naming option
 - Search and large/small-icon views backed by the same settings catalog

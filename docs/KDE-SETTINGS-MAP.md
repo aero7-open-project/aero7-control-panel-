@@ -170,7 +170,7 @@ so it can later be copied directly into the Aero7 GitHub wiki.
 
 | Windows 7 name | KDE Plasma name | Original KDE module/backend | State |
 | --- | --- | --- | --- |
-| Windows Firewall | Firewall | Aero7 status/toggle; `kcm_firewall` for advanced rules | Aero7 partial + temporary KDE bridge (`plasma-firewall`) |
+| Windows Firewall | Firewall | Aero7 status/toggle/service journal; `kcm_firewall` for advanced rules | Aero7 partial + temporary KDE bridge (`plasma-firewall`); tested upstream policy/traffic-log controls are nonfunctional |
 | Windows Update | Software Update | Aero7 `pacman` update page | Aero7 native |
 | Diagnostic Data | User Feedback | `kcm_feedback` | Temporary KDE module |
 

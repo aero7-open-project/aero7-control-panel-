@@ -167,7 +167,7 @@ permissions, unavailable features, and troubleshooting.
 
 | Setting | What it does | KDE Plasma name and implementation | Status |
 | --- | --- | --- | --- |
-| **Windows Firewall** | View firewall status and change network protection; edit rules and inspect logs. | Aero7 Control Panel page; temporary KDE Firewall editor (`plasma-firewall`) | Aero7 partial + KDE bridge; firewalld reset unavailable |
+| **Windows Firewall** | View firewall status, toggle protection, edit rules and read service diagnostics. | Aero7 Control Panel page and journal viewer; temporary KDE Firewall rule editor (`plasma-firewall`) | Aero7 partial + KDE bridge; firewalld reset unavailable; upstream policy/traffic-log controls nonfunctional |
 | **Windows Update** | Check for and install system updates. | Software Update; Aero7 Control Panel page | Aero7 native |
 | **Diagnostic Data** | Choose whether anonymous desktop feedback is sent. | User Feedback; <code>kcm_feedback</code> | Temporary KDE module |
 

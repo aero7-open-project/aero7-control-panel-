@@ -56,6 +56,7 @@ private:
                                 bool expanded,
                                 const FwInfo &info);
     void showNotificationSettings(const QString &currentLogLevel);
+    void showFirewalldServiceLog();
     void runUfw(const QStringList &arguments, const QString &successMessage,
                 std::optional<bool> expectedEnabled = std::nullopt);
     void setFirewalldEnabled(bool enabled);

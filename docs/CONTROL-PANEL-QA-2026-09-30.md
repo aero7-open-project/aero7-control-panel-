@@ -159,7 +159,7 @@ incorrect disabled display; launching from the active desktop terminal read
 the active firewalld backend, Reject/Allow policies, and existing rules.
 KDE's editor emitted QML ReferenceError/binding warnings and protocol warnings;
 this temporary bridge must not be described as error-free or a native Aero7
-rule editor. Rule creation/removal and log-view acceptance remain pending.
+rule editor. The further rule/log acceptance findings are recorded below.
 
 The rebuilt native page was then opened from that same graphical session.
 Its firewalld rule/log buttons were enabled, Advanced settings was reachable,
@@ -183,11 +183,61 @@ waiting for the prompt made authentication succeed. No host account was
 changed. Restarting firewalld discarded the overlay's runtime-only SSH
 allowance, so QA access required restoring that allowance separately.
 
+#### Rule changes and service-journal follow-up
+
+The actual KDE Firewall editor created an incoming IPv4 TCP DROP rule limited
+to source and destination `127.0.0.1`, destination port `65001`. Independent
+root `firewall-cmd --direct --get-all-rules` readback confirmed exactly:
+
+```text
+ipv4 filter INPUT 0 -j DROP -p tcp -d 127.0.0.1 --dport=65001 -s 127.0.0.1
+```
+
+The editor then removed that rule. Independent readback confirmed empty runtime
+direct, permanent direct and rich-rule lists. Firewalld remained `active` and
+`enabled`; the QA-only SSH runtime allowance was preserved. Apply/runtime-to-
+permanent was deliberately not used: it would also persist the QA SSH allowance.
+This verifies runtime create/delete only, not persistence or every rule type.
+
+The tests also found real upstream defects in the tested `plasma-firewall`
+6.7.5-1:
+
+- Waiting at the authorization prompt longer than the default D-Bus timeout
+  causes a timeout error. Retrying while the original prompt is still active
+  produces "Another client is already authenticating" / Not Authorized. Slow
+  authorization is not accepted as working. A previous error banner can remain
+  visible after a later successful removal.
+- Policy setters only update the module's in-memory profile; they do not change
+  firewalld. The displayed outgoing policy also changed after a rule refresh
+  without a corresponding OUTPUT rule. These selectors must not be relied on.
+- The traffic-log view opens empty, but upstream `refreshLogs()` is an empty
+  function. An empty view is not evidence that no packets were blocked.
+- Service rows display fake `0/TCP` details and mark an IPv6 row IPv4.
+
+These findings were cross-checked against the maintained [KDE firewalld
+backend source](https://invent.kde.org/plasma/plasma-firewall/-/tree/Plasma/6.7/kcm/backends/firewalld).
+Control Panel now labels the bridge as rule editing, warns about the policy/log
+limitations, and offers a separate **Service log** button. This read-only Aero7
+dialog uses `journalctl --unit=firewalld.service --lines=100 --no-pager
+--output=short-iso`, with no privileged command and no firewall mutation. It is
+explicitly service diagnostics, not blocked-traffic logging.
+
+The rebuilt dialog was opened through its actual button in the 1920×1080 VM.
+It displayed the real service stop/start records from the earlier native
+on/off test, matching an independent journal read. The dialog uses Aero7 window
+decoration and the bundled firewall icon. Automated coverage checks exact
+read-only arguments, successful output, failure, partial-permission warning,
+empty output, missing reader, failed start, and timeout. All 24 host CTests pass;
+the updated firewall test also passes all ten Qt groups in the VM. The final
+graphical launch still logged the VM's missing NVIDIA VDPAU-library warning;
+no journal-reader failure occurred. This does not establish an error-free
+overall session or fix the separate KDE module defects.
+
 ### Remaining checks
 
 The route smoke checks do **not** prove that all 72 settings persist and
 change the running Plasma/KWin services. The 49 advanced or incomplete entries now open
-KDE's working modules temporarily instead of the unverified Aero7 editors.
+checked KDE modules temporarily instead of the unverified Aero7 editors.
 Each native Aero7 page still needs a save/readback/backend-response check in
 a disposable VM, particularly hardware and network controls. Optional-feature
 install/removal also needs separate end-to-end coverage. No change here should
@@ -213,7 +263,9 @@ before claiming success; the October 1 graphical VM follow-up verified
 cancellation, authenticated off, and authenticated on. The existing UFW toggle
 likewise rereads `ufw.conf` before claiming success, but its actual privileged
 toggle still needs VM acceptance. Firewalld rules/logs now use the checked KDE
-Firewall module temporarily; actual rule changes and log views remain pending.
+Firewall module temporarily; runtime create/delete passed, but persistence,
+slow authorization and upstream policy/traffic-log defects remain unresolved.
+The Aero7 read-only service-journal dialog passed actual graphical VM acceptance.
 Linux Update now requires `checkupdates` from pacman-contrib for a safe
 repository check. If it is absent or fails, the page reports an error rather
 than presenting stale package data as a successful check. Selective repository

@@ -26,6 +26,8 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QSysInfo>
+#include <QPlainTextEdit>
+#include <QTimer>
 
 using Win7::ClickableWidget;
 
@@ -195,7 +197,7 @@ QList<SidebarLink> FirewallPage::sidebarLinks()
     return {
         editor("Allow a port or service through Linux Firewall"),
         ufw ? Nav::to("Change notification settings", PageId::Firewall)
-            : editor("View firewall rules and logs"),
+            : editor("View firewall rules"),
         Nav::to("Turn Linux Firewall on or off", PageId::Firewall),
         ufw ? Nav::to("Restore defaults", PageId::Firewall)
             : Nav::disabled("Restore defaults"),
@@ -313,8 +315,9 @@ QWidget *FirewallPage::buildLocationPanel(const QString &title,
 
     auto *caption = Win7::bodyLabel(info.backend == FirewallBackend::Kind::Firewalld
         ? QStringLiteral("Linux Firewall uses firewalld zones. The current "
-                         "Aero7 page shows service status. Rules and logs "
-                         "are temporarily managed in KDE's Firewall settings.")
+                         "Aero7 page shows service status. Rule editing is "
+                         "temporarily provided by KDE Firewall; Service log "
+                         "shows actual service diagnostics.")
         : QStringLiteral("Linux Firewall (UFW) applies one set of rules to every "
                          "network. It has no separate Home, Work, or Public rule sets."));
     caption->setContentsMargins(kLeftInset, 0, kRightInset, 0);
@@ -486,7 +489,7 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
     controls->addWidget(allow);
 
     auto *notifications = new QPushButton(info.backend == FirewallBackend::Kind::Firewalld
-        ? "Rules and logs…" : "Notification settings…");
+        ? "Rules…" : "Notification settings…");
     notifications->setObjectName("firewall-notification-settings");
     notifications->setEnabled(backend.ready && (info.backend == FirewallBackend::Kind::Ufw
                                               || firewallEditorAvailable));
@@ -502,6 +505,19 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
             showNotificationSettings(info.logLevel);
     });
     controls->addWidget(notifications);
+
+    if (info.backend == FirewallBackend::Kind::Firewalld) {
+        auto *logs = new QPushButton("Service log…");
+        logs->setObjectName("firewall-service-log");
+        logs->setIcon(themeIcon({"preferences-security-firewall"}));
+        logs->setEnabled(!QStandardPaths::findExecutable("journalctl").isEmpty());
+        logs->setToolTip(logs->isEnabled()
+            ? "Read firewalld's service diagnostics without changing the firewall. "
+              "This is not a blocked-traffic log."
+            : "The system journal reader (journalctl) is not installed.");
+        connect(logs, &QPushButton::clicked, this, &FirewallPage::showFirewalldServiceLog);
+        controls->addWidget(logs);
+    }
 
     auto *reset = new QPushButton("Restore defaults…");
     reset->setObjectName("firewall-restore-defaults");
@@ -524,6 +540,17 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
     contentV->addLayout(controls);
     contentV->addSpacing(12);
 
+    if (info.backend == FirewallBackend::Kind::Firewalld && firewallEditorAvailable) {
+        auto *limitations = Win7::bodyLabel(
+            "Rule changes temporarily use KDE Firewall. Its firewalld policy selectors "
+            "and traffic-log viewer are not functional; do not use those controls. "
+            "Service log shows actual firewall service diagnostics instead.");
+        limitations->setObjectName("firewall-editor-limitations");
+        limitations->setWordWrap(true);
+        contentV->addWidget(limitations);
+        contentV->addSpacing(12);
+    }
+
     // The network panel. ufw has no per-network profiles (no Home/Work/Public
     // split), so rather than mimic Windows' two location panels we show a
     // single "All networks" section expanded to the live ufw state. It is
@@ -534,6 +561,79 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
         /*expanded=*/true, info));
 
     contentV->addStretch(1);
+}
+
+void FirewallPage::showFirewalldServiceLog()
+{
+    auto *dialog = new QDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setObjectName("firewall-service-log-dialog");
+    dialog->setWindowTitle("Firewall service log");
+    dialog->setWindowIcon(themeIcon({"preferences-security-firewall"}));
+    dialog->resize(760, 440);
+    auto *layout = new QVBoxLayout(dialog);
+    auto *description = Win7::bodyLabel(
+        "Recent firewalld service diagnostics. This does not list blocked packets "
+        "or enable traffic logging. No firewall settings are changed.");
+    description->setWordWrap(true);
+    layout->addWidget(description);
+    auto *status = Win7::bodyLabel("Reading the system journal…");
+    status->setObjectName("firewall-service-log-status");
+    status->setWordWrap(true);
+    layout->addWidget(status);
+    auto *output = new QPlainTextEdit(dialog);
+    output->setObjectName("firewall-service-log-output");
+    output->setReadOnly(true);
+    layout->addWidget(output, 1);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    auto *process = new QProcess(dialog);
+    auto *timeout = new QTimer(process);
+    timeout->setSingleShot(true);
+    connect(timeout, &QTimer::timeout, dialog, [process, status]() {
+        process->setProperty("timedOut", true);
+        status->setText("Reading the service log timed out. No firewall settings were changed.");
+        process->kill();
+    });
+    connect(process, &QProcess::errorOccurred, dialog,
+            [status, timeout](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            timeout->stop();
+            status->setText("The system journal reader could not start. No firewall settings were changed.");
+        }
+    });
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            dialog, [process, output, status, timeout](int code, QProcess::ExitStatus result) {
+        timeout->stop();
+        const QString text = QString::fromUtf8(process->readAllStandardOutput()).trimmed();
+        const QString error = QString::fromUtf8(process->readAllStandardError()).trimmed();
+        output->setPlainText(text);
+        if (process->property("timedOut").toBool())
+            return;
+        if (result != QProcess::NormalExit || code != 0) {
+            status->setText("The service log could not be read. " + error);
+        } else if (!error.isEmpty()) {
+            // journalctl can succeed with only the journals the user may read.
+            // Keep permission/incomplete-output warnings visible, not a fake empty log.
+            status->setText("Journal reader warning: " + error);
+        } else {
+            status->setText(text.isEmpty() || text == "-- No entries --"
+                ? "No service log entries are available to this account."
+                : "Recent service log entries (up to 100).");
+        }
+    });
+    connect(dialog, &QDialog::finished, process, [process]() { process->kill(); });
+    dialog->open();
+    const QString reader = QStandardPaths::findExecutable("journalctl");
+    if (reader.isEmpty()) {
+        status->setText("The system journal reader is not installed.");
+        return;
+    }
+    process->start(reader, {"--unit=firewalld.service", "--lines=100", "--no-pager",
+                           "--output=short-iso"});
+    timeout->start(8000);
 }
 
 void FirewallPage::showNotificationSettings(const QString &currentLogLevel)

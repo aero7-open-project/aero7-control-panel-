@@ -20,7 +20,8 @@ not pretend to be working controls.
 | Network and Sharing Center | Status, connect and diagnostics | Reads live NetworkManager data, activates saved connections with `nmcli`, and shows address, gateway and routing diagnostics; the advanced editor remains available separately |
 | Firewall | Turn on/off | Uses Polkit with the detected backend: UFW enable/disable or firewalld service enable/disable; verifies resulting state before reporting success. Stale UFW kernels disable mutations with a restart explanation. |
 | Firewall | Allow a port or service | Native UFW rule entry; firewalld opens the checked KDE Firewall module (`kcm_firewall`, from `plasma-firewall`) temporarily. The sidebar rule link opens that module for either backend. |
-| Firewall | Notification settings / Rules and logs | Native UFW event logging; firewalld opens KDE Firewall for rules and logs. This is not a per-program approval-popup feature. |
+| Firewall | Notification settings / Rules | Native UFW event logging; firewalld opens KDE Firewall for rules. Its firewalld policy selectors and traffic-log viewer are not functional in the tested upstream version; the page explains these limitations. This is not a per-program approval-popup feature. |
+| Firewall | Service log | Reads up to 100 firewalld service-journal entries without privileges or changes to firewall settings. Permission warnings, command failures and an eight-second timeout remain visible. This is service diagnostics, not packet logging. |
 | Firewall | Restore defaults | Confirms a destructive UFW reset; remains unavailable for firewalld because the temporary editor does not offer an equivalent reset. |
 | Firewall | Advanced settings | Opens the checked KDE Firewall module; unavailable when `plasma-firewall` is absent. |
 | Action Center | Security/account/network/backup tasks | Routes to the appropriate internal page or hub |
