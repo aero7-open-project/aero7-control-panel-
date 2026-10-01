@@ -414,7 +414,10 @@ DisplayPage::DisplayPage(QScrollArea *sidebar, QWidget *parent)
     m_monitorDiagram->positionChanged = [this](int index, const QPoint &position) {
         if (index < 0 || index >= m_outputs.size())
             return;
+        if (m_outputs.at(index).position == position)
+            return;
         m_outputs[index].position = position;
+        m_apply->setEnabled(true);
         setStatus(QStringLiteral("Display %1 moved to %2, %3. Select Apply to keep this arrangement.")
                       .arg(index + 1).arg(position.x()).arg(position.y()));
     };
@@ -697,12 +700,28 @@ void DisplayPage::applyChanges()
     });
     countdown.start(1000);
     if (confirmation.exec() != QMessageBox::Yes) {
-        runDoctor(restore, nullptr);
+        QString restoreError;
+        if (!runDoctor(restore, &restoreError)) {
+            setStatus(QStringLiteral("Could not restore the previous display settings: %1")
+                          .arg(restoreError), true);
+            return;
+        }
+        QString reloadError;
+        if (!loadConfiguration(&reloadError)) {
+            setStatus(QStringLiteral("The previous settings were applied, but could not be verified: %1")
+                          .arg(reloadError), true);
+            return;
+        }
         setStatus("The previous display settings were restored.");
     } else {
+        QString reloadError;
+        if (!loadConfiguration(&reloadError)) {
+            setStatus(QStringLiteral("The display settings were applied, but could not be verified: %1")
+                          .arg(reloadError), true);
+            return;
+        }
         setStatus("The new display settings were kept.");
     }
-    loadConfiguration(nullptr);
 }
 
 void DisplayPage::setStatus(const QString &text, bool error)
