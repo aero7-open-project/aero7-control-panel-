@@ -4,6 +4,7 @@
 #include "Win7Ui.h"
 #include "Branding.h"
 #include "FirewallBackend.h"
+#include "KdeSettingsBridge.h"
 
 #include <QScrollArea>
 #include <QLabel>
@@ -185,15 +186,20 @@ FirewallPage::FwInfo FirewallPage::gatherInfo()
 QList<SidebarLink> FirewallPage::sidebarLinks()
 {
     const bool ufw = FirewallBackend::detect().kind == FirewallBackend::Kind::Ufw;
+    const bool editorAvailable = KdeSettingsBridge::moduleAvailable("kcm_firewall");
+    const auto editor = [editorAvailable](const QString &label) {
+        return editorAvailable
+            ? Nav::command(label, {"kcmshell6", "--caption", "Linux Firewall", "kcm_firewall"})
+            : Nav::disabled(label);
+    };
     return {
-        ufw ? Nav::to("Allow a port or service through Linux Firewall", PageId::Firewall)
-            : Nav::disabled("Allow a port or service through Linux Firewall"),
+        editor("Allow a port or service through Linux Firewall"),
         ufw ? Nav::to("Change notification settings", PageId::Firewall)
-            : Nav::disabled("Change notification settings"),
+            : editor("View firewall rules and logs"),
         Nav::to("Turn Linux Firewall on or off", PageId::Firewall),
         ufw ? Nav::to("Restore defaults", PageId::Firewall)
             : Nav::disabled("Restore defaults"),
-        Nav::disabled("Advanced settings"),
+        editor("Advanced settings"),
         Nav::to("Troubleshoot my network", PageId::NetworkSharing),
     };
 }
@@ -307,8 +313,8 @@ QWidget *FirewallPage::buildLocationPanel(const QString &title,
 
     auto *caption = Win7::bodyLabel(info.backend == FirewallBackend::Kind::Firewalld
         ? QStringLiteral("Linux Firewall uses firewalld zones. The current "
-                         "Aero7 page shows service status; use firewall-cmd "
-                         "to inspect or change advanced zone rules.")
+                         "Aero7 page shows service status. Rules and logs "
+                         "are temporarily managed in KDE's Firewall settings.")
         : QStringLiteral("Linux Firewall (UFW) applies one set of rules to every "
                          "network. It has no separate Home, Work, or Public rule sets."));
     caption->setContentsMargins(kLeftInset, 0, kRightInset, 0);
@@ -401,6 +407,7 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
         ? probeFirewallBackend() : FirewallBackendStatus{
             info.backend == FirewallBackend::Kind::Firewalld, false,
             QStringLiteral("No supported firewall backend is installed.")};
+    const bool firewallEditorAvailable = KdeSettingsBridge::moduleAvailable("kcm_firewall");
 
     // Windows 7 lays the content out at a fixed width and leaves the rest of
     // the window blank on the right rather than stretching to fill it.
@@ -456,13 +463,17 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
 
     auto *allow = new QPushButton("Allow a port or service…");
     allow->setObjectName("firewall-allow-service");
-    allow->setEnabled(backend.ready && info.backend == FirewallBackend::Kind::Ufw);
+    allow->setEnabled(backend.ready && (info.backend == FirewallBackend::Kind::Ufw
+                                      || firewallEditorAvailable));
     if (!allow->isEnabled())
         allow->setToolTip(info.backend == FirewallBackend::Kind::Firewalld
-            ? QStringLiteral("Firewalld rule editing is not available in this "
-                             "Aero7 version. Use firewall-cmd for advanced rules.")
+            ? QStringLiteral("Install plasma-firewall to open the temporary KDE Firewall editor.")
             : backend.message);
-    connect(allow, &QPushButton::clicked, this, [this]() {
+    connect(allow, &QPushButton::clicked, this, [this, info]() {
+        if (info.backend == FirewallBackend::Kind::Firewalld) {
+            KdeSettingsBridge::open(this, "kcm_firewall", "Linux Firewall");
+            return;
+        }
         bool ok = false;
         const QString rule = QInputDialog::getText(
             this, "Allow a port or service",
@@ -474,15 +485,22 @@ FirewallPage::FirewallPage(QScrollArea *sidebar, QWidget *parent)
     });
     controls->addWidget(allow);
 
-    auto *notifications = new QPushButton("Notification settings…");
+    auto *notifications = new QPushButton(info.backend == FirewallBackend::Kind::Firewalld
+        ? "Rules and logs…" : "Notification settings…");
     notifications->setObjectName("firewall-notification-settings");
-    notifications->setEnabled(backend.ready && info.backend == FirewallBackend::Kind::Ufw);
+    notifications->setEnabled(backend.ready && (info.backend == FirewallBackend::Kind::Ufw
+                                              || firewallEditorAvailable));
     if (!notifications->isEnabled())
         notifications->setToolTip(info.backend == FirewallBackend::Kind::Firewalld
-            ? QStringLiteral("UFW logging settings do not apply to firewalld.")
+            ? QStringLiteral("Install plasma-firewall to open the temporary KDE Firewall editor.")
             : backend.message);
     connect(notifications, &QPushButton::clicked, this,
-            [this, info]() { showNotificationSettings(info.logLevel); });
+            [this, info]() {
+        if (info.backend == FirewallBackend::Kind::Firewalld)
+            KdeSettingsBridge::open(this, "kcm_firewall", "Linux Firewall");
+        else
+            showNotificationSettings(info.logLevel);
+    });
     controls->addWidget(notifications);
 
     auto *reset = new QPushButton("Restore defaults…");

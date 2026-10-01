@@ -18,10 +18,11 @@ not pretend to be working controls.
 | Programs and Features | Turn Aero7 features on or off | Launches the separate catalog-driven `aero7-optional-features` application |
 | Installed Updates | Installed update list | Reads package history; it no longer claims a single historical update can be uninstalled safely |
 | Network and Sharing Center | Status, connect and diagnostics | Reads live NetworkManager data, activates saved connections with `nmcli`, and shows address, gateway and routing diagnostics; the advanced editor remains available separately |
-| Firewall | Turn on/off | Runs the corresponding `ufw` command through polkit; mutation controls are disabled with a restart-required explanation when an updated kernel has left the running firewall backend stale |
-| Firewall | Allow a port or service | Validates a user-provided `ufw allow` rule and applies it through polkit |
-| Firewall | Notification settings | Configures UFW event logging from Off through Full and explains that UFW does not provide per-program popups |
-| Firewall | Restore defaults | Confirms the destructive reset before running `ufw --force reset` |
+| Firewall | Turn on/off | Uses Polkit with the detected backend: UFW enable/disable or firewalld service enable/disable; verifies resulting state before reporting success. Stale UFW kernels disable mutations with a restart explanation. |
+| Firewall | Allow a port or service | Native UFW rule entry; firewalld opens the checked KDE Firewall module (`kcm_firewall`, from `plasma-firewall`) temporarily. The sidebar rule link opens that module for either backend. |
+| Firewall | Notification settings / Rules and logs | Native UFW event logging; firewalld opens KDE Firewall for rules and logs. This is not a per-program approval-popup feature. |
+| Firewall | Restore defaults | Confirms a destructive UFW reset; remains unavailable for firewalld because the temporary editor does not offer an equivalent reset. |
+| Firewall | Advanced settings | Opens the checked KDE Firewall module; unavailable when `plasma-firewall` is absent. |
 | Action Center | Security/account/network/backup tasks | Routes to the appropriate internal page or hub |
 | Power Options | Plans and battery | Changes real power-profiles-daemon profiles and reads battery, charging and remaining-time data from UPower; advanced lid/sleep policy remains a separate PowerDevil bridge |
 | Personalization | Color scheme tiles | Applies an installed color scheme; the UI now calls these color schemes rather than claiming to change a complete theme |

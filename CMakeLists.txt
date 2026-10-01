@@ -395,6 +395,24 @@ if(BUILD_TESTING)
     target_link_libraries(firewall-backend-test PRIVATE Qt6::Test)
     add_test(NAME firewall-backend-test COMMAND firewall-backend-test)
 
+    add_executable(firewall-bridge-test
+        resources/icons.qrc
+        tests/FirewallBridgeTest.cpp
+        src/ui/KdeSettingsBridge.cpp
+        src/ui/pages/FirewallPage.h
+        src/ui/pages/FirewallPage.cpp
+        src/data/Branding.cpp
+    )
+    qt_add_resources(firewall-bridge-test "aero7-firewall-pack-icons-test"
+        PREFIX "/aero7/pack"
+        BASE "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/pack"
+        FILES ${AERO7_PACK_ICON_FILES})
+    target_include_directories(firewall-bridge-test PRIVATE src/ui src/ui/pages src/data)
+    target_link_libraries(firewall-bridge-test PRIVATE
+        Qt6::Widgets Qt6::Test Qt6::Concurrent Qt6::Network Aero7Qt::Aero7Qt)
+    add_test(NAME firewall-bridge-test COMMAND firewall-bridge-test)
+    set_tests_properties(firewall-bridge-test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     add_executable(linux-update-check-test
         resources/icons.qrc
         tests/LinuxUpdateCheckTest.cpp

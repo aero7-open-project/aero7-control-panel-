@@ -11,7 +11,7 @@ checks from proof that a setting changes its system backend.
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
 | Display / Screen Resolution | Layout drag, per-monitor edits, and backend rollback | Dragging a monitor enables Apply only when its position changes. Resolution, orientation, scale, and primary-display changes are retained per monitor. Rollback uses a separate pre-edit snapshot, and backend failures produce an error. Controlled tests cover drag, original-coordinate rollback, failure handling, and edits retained across monitor selection. A disposable graphical VM also passed real resolution reject, 15-second timeout, keep, and restore checks. Real multi-monitor arrangement, scaling, and rotation still need acceptance. |
-| Automated tests | 23 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, firewall-backend selection, Linux Update command failures, and User Accounts module routing. |
+| Automated tests | 24 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, firewall-backend selection and module routing, Linux Update command failures, and User Accounts module routing. |
 
 ## VM evidence
 
@@ -150,6 +150,41 @@ acceptance items.
 
 ## Remaining functional acceptance
 
+### October 1 firewall follow-up
+
+Installed `plasma-firewall` 6.7.5-1 only in the disposable VM overlay. Its
+`kcm_firewall` module was detected and opened under Aero7's window decoration.
+Launching it through SSH initially produced authorization errors and an
+incorrect disabled display; launching from the active desktop terminal read
+the active firewalld backend, Reject/Allow policies, and existing rules.
+KDE's editor emitted QML ReferenceError/binding warnings and protocol warnings;
+this temporary bridge must not be described as error-free or a native Aero7
+rule editor. Rule creation/removal and log-view acceptance remain pending.
+
+The rebuilt native page was then opened from that same graphical session.
+Its firewalld rule/log buttons were enabled, Advanced settings was reachable,
+and Restore defaults stayed unavailable. The new controlled routing test
+passed on the host and in the VM (four Qt test groups). All 24 CTests passed
+on the host. Missing-module cases keep those editor actions disabled with a
+`plasma-firewall` explanation; the native service toggle remains independent.
+
+The actual native firewall toggle was clicked in the VM. Cancelling UAC
+produced the expected cancellation warning and left the service active.
+An authenticated off action showed success and independently read back
+`inactive`/`disabled` from systemctl. After acknowledging the dialog, the
+page refreshed to Off. An authenticated on action showed success following
+the page's service-state readback, restoring the original enabled firewall.
+After QA SSH access was restored, independent `systemctl is-active` and
+`systemctl is-enabled` checks confirmed `active` and `enabled`. The daemon
+journal recorded both graphical-session pkexec requests and the stop/start.
+The first password attempts occurred before focus settled and triggered the
+test account's PAM lock; clearing only that disposable account's tally and
+waiting for the prompt made authentication succeed. No host account was
+changed. Restarting firewalld discarded the overlay's runtime-only SSH
+allowance, so QA access required restoring that allowance separately.
+
+### Remaining checks
+
 The route smoke checks do **not** prove that all 72 settings persist and
 change the running Plasma/KWin services. The 49 advanced or incomplete entries now open
 KDE's working modules temporarily instead of the unverified Aero7 editors.
@@ -174,10 +209,11 @@ Default Programs now rereads browser and default-association status after Save
 and refuses to report success if the launcher did not retain either choice.
 Firewall status now follows the installed active backend. The firewalld
 on/off action waits for `systemctl` and verifies the resulting service state
-before claiming success; its Polkit path has not yet been exercised in the
-graphical VM session. The existing UFW toggle likewise rereads `ufw.conf`
-before claiming success. Firewalld rule editing still needs a working Aero7 UI or
-an installed compatible settings module.
+before claiming success; the October 1 graphical VM follow-up verified
+cancellation, authenticated off, and authenticated on. The existing UFW toggle
+likewise rereads `ufw.conf` before claiming success, but its actual privileged
+toggle still needs VM acceptance. Firewalld rules/logs now use the checked KDE
+Firewall module temporarily; actual rule changes and log views remain pending.
 Linux Update now requires `checkupdates` from pacman-contrib for a safe
 repository check. If it is absent or fails, the page reports an error rather
 than presenting stale package data as a successful check. Selective repository

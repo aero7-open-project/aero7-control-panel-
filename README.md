@@ -72,6 +72,7 @@ Current functionality includes:
 - Catalog-driven settings hubs that preserve every original KDE setting name
 - Working KDE-module bridges for advanced settings without a verified Aero7
   editor; missing modules show a clear error instead of a nonfunctional form
+  (firewalld rules and logs require the `plasma-firewall` package)
 - Exact 45-item Windows 7 **All Control Panel Items** inventory and five-column order
 - Windows 7 names by default, with a persistent KDE Plasma naming option
 - Search and large/small-icon views backed by the same settings catalog
