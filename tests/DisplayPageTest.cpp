@@ -23,6 +23,9 @@ int main(int argc, char **argv)
         return 2;
     doctor.write(R"SH(#!/bin/sh
 if [ "$1" != "--json" ]; then
+    if [ -n "$AERO7_DOCTOR_LOG" ]; then
+        printf '%s\n' "$@" > "$AERO7_DOCTOR_LOG"
+    fi
     if [ "$AERO7_DOCTOR_FAIL_RESTORE" = "1" ]; then
         for argument in "$@"; do
             if [ "$argument" = "output.Virtual-1.mode.1" ]; then
@@ -96,12 +99,26 @@ EOF
     if (!apply->isEnabled() || !status->text().contains(QLatin1String("moved")))
         return 9;
 
+    const QString doctorLogPath = temporary.filePath(QStringLiteral("doctor-arguments.log"));
+    qputenv("AERO7_DOCTOR_LOG", doctorLogPath.toUtf8());
+    QTimer::singleShot(0, []() {
+        auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        if (dialog)
+            dialog->button(QMessageBox::No)->click();
+    });
+    apply->click();
+    QFile doctorLog(doctorLogPath);
+    if (!doctorLog.open(QIODevice::ReadOnly)
+        || !doctorLog.readAll().contains("output.Virtual-1.position.0,0"))
+        return 10;
+    doctorLog.close();
+
     page.findChild<QPushButton *>(QStringLiteral("displayCancel"))->click();
     if (apply->isEnabled())
-        return 10;
+        return 11;
     resolution->setCurrentIndex(1);
     if (!apply->isEnabled())
-        return 11;
+        return 12;
     qputenv("AERO7_DOCTOR_FAIL_RESTORE", "1");
     QTimer::singleShot(0, []() {
         auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
@@ -112,6 +129,6 @@ EOF
     qunsetenv("AERO7_DOCTOR_FAIL_RESTORE");
     if (!status->text().contains(QLatin1String("Could not restore"))
         || !status->text().contains(QLatin1String("simulated rollback failure")))
-        return 12;
+        return 13;
     return 0;
 }

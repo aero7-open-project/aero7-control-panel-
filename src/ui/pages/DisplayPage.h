@@ -51,6 +51,7 @@ private:
     void setStatus(const QString &text, bool error = false);
 
     QVector<Output> m_outputs;
+    QVector<Output> m_originalOutputs;
     QComboBox *m_display = nullptr;
     QComboBox *m_resolution = nullptr;
     QComboBox *m_orientation = nullptr;

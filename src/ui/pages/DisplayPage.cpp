@@ -516,6 +516,7 @@ bool DisplayPage::loadConfiguration(QString *error)
     }
 
     const QString selectedName = m_display->currentData().toString();
+    m_originalOutputs = outputs;
     m_outputs = outputs;
     m_display->blockSignals(true);
     m_display->clear();
@@ -619,7 +620,7 @@ void DisplayPage::populateOutputControls()
 QStringList DisplayPage::restoreArguments() const
 {
     QStringList arguments;
-    for (const Output &output : m_outputs) {
+    for (const Output &output : m_originalOutputs) {
         arguments << outputArgument(output.name, output.enabled ? QStringLiteral("enable")
                                                                 : QStringLiteral("disable"));
         if (!output.currentModeId.isEmpty())
