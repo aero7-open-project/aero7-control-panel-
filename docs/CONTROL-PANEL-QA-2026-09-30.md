@@ -107,8 +107,8 @@ test verified the five links and the unavailable-module sidebar state without
 creating, deleting, or modifying any real account. The real module is present
 on the development host. The rebuilt Control Panel page and the real Users
 module both remained running for five seconds offscreen with no error output.
-Their graphical appearance and account changes still need disposable-VM
-acceptance.
+Graphical appearance and account editing were still pending at that stage;
+the October 1 checks below provide further coverage.
 
 On October 1, the rebuilt Display page was tested against the real KScreen
 service in a new disposable VM layer. `AERO7_DISPLAY_REAL_BACKEND=1
@@ -133,8 +133,20 @@ waking and unlocking the guest restored the visible desktop.
 The User Accounts overview and the real KDE Users module were also opened
 and visually inspected in that guest. AccountsService was active, and the
 controlled account-routing test passed all four Qt test groups in the VM.
-The module log contained MESA software-rendering warnings. Account editing
-still requires an authenticated save/readback acceptance check.
+The module log contained MESA software-rendering warnings. After restarting
+the same disposable layer, the real Users editor saved the current user's
+display name as `Aero7 QA`; both `/etc/passwd` and the AccountsService
+`RealName` property confirmed it. The daemon journal identified the request
+as coming from `kcmshell6`.
+
+Clearing that name and applying it in the KDE editor showed an empty name
+in the UI but did not send a corresponding AccountsService update. The
+backend still held `Aero7 QA`. Calling AccountsService's `SetRealName` with
+an empty string restored the guest's original value, and both readbacks
+confirmed the restoration. **Clearing a display name through the temporary
+KDE Users editor remains a known defect.** Account creation/removal,
+password changes, and privileged account-type changes also remain VM
+acceptance items.
 
 ## Remaining functional acceptance
 
