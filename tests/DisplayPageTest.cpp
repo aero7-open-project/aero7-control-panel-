@@ -2,17 +2,107 @@
 
 #include <QApplication>
 #include <QComboBox>
+#include <QElapsedTimer>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <cstdio>
+
+namespace {
+QString currentMode(const QString &name)
+{
+    QProcess doctor;
+    doctor.start(QStringLiteral("kscreen-doctor"), {QStringLiteral("--json")});
+    if (!doctor.waitForFinished(10000) || doctor.exitCode() != 0)
+        return {};
+    const auto outputs = QJsonDocument::fromJson(doctor.readAllStandardOutput())
+                             .object().value(QStringLiteral("outputs")).toArray();
+    for (const auto &value : outputs) {
+        const auto output = value.toObject();
+        if (output.value(QStringLiteral("name")).toString() == name)
+            return output.value(QStringLiteral("currentModeId")).toString();
+    }
+    return {};
+}
+
+int runRealBackend(QApplication &app)
+{
+    DisplayPage page(nullptr);
+    page.resize(900, 720);
+    page.show();
+    app.processEvents();
+    auto *display = page.findChild<QComboBox *>(QStringLiteral("displaySelector"));
+    auto *resolution = page.findChild<QComboBox *>(QStringLiteral("resolutionSelector"));
+    auto *apply = page.findChild<QPushButton *>(QStringLiteral("displayApply"));
+    auto *status = page.findChild<QLabel *>(QStringLiteral("displayStatus"));
+    if (!display || !resolution || !apply || !status || display->count() < 1)
+        return 20;
+    const QString name = display->currentData().toString();
+    const QString original = currentMode(name);
+    if (original.isEmpty() || resolution->currentData().toString() != original)
+        return 21;
+    int alternateIndex = resolution->findText(QStringLiteral("1280 x 768"));
+    if (alternateIndex < 0)
+        alternateIndex = resolution->findText(QStringLiteral("1024 x 768"));
+    if (alternateIndex < 0 || alternateIndex == resolution->currentIndex())
+        return 22;
+    const QString alternate = resolution->itemData(alternateIndex).toString();
+
+    auto transition = [&](const QString &mode, QMessageBox::StandardButton answer,
+                          const QString &expected, bool timed) {
+        const int index = resolution->findData(mode);
+        if (index < 0)
+            return false;
+        resolution->setCurrentIndex(index);
+        bool observed = false;
+        QTimer::singleShot(2000, &page, [&]() {
+            auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            observed = dialog && currentMode(name) == mode;
+            if (dialog && !timed)
+                dialog->button(answer)->click();
+        });
+        QElapsedTimer elapsed;
+        elapsed.start();
+        apply->click();
+        const QString actual = currentMode(name);
+        const bool passed = observed && actual == expected
+            && (!timed || elapsed.elapsed() >= 14000);
+        std::fprintf(stderr, "Display %s: requested=%s observed=%s result=%s expected=%s status=%s\n",
+                     timed ? "timeout" : answer == QMessageBox::Yes ? "keep" : "reject",
+                     mode.toUtf8().constData(), observed ? "yes" : "no",
+                     actual.toUtf8().constData(), expected.toUtf8().constData(),
+                     status->text().toUtf8().constData());
+        return passed;
+    };
+    const bool passed = transition(alternate, QMessageBox::No, original, false)
+        && transition(alternate, QMessageBox::No, original, true)
+        && transition(alternate, QMessageBox::Yes, alternate, false)
+        && transition(original, QMessageBox::Yes, original, false);
+    if (!passed) {
+        // A failed assertion must still leave the disposable guest usable.
+        QProcess restore;
+        restore.start(QStringLiteral("kscreen-doctor"),
+                      {QStringLiteral("output.%1.mode.%2").arg(name, original)});
+        restore.waitForFinished(10000);
+        return 23;
+    }
+    return 0;
+}
+}
 
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+    if (qEnvironmentVariableIsSet("AERO7_DISPLAY_REAL_BACKEND"))
+        return runRealBackend(app);
     QTemporaryDir temporary;
     if (!temporary.isValid())
         return 1;

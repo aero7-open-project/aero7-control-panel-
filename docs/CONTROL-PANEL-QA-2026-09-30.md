@@ -10,7 +10,7 @@ checks from proof that a setting changes its system backend.
 | Advanced settings | 49 temporary KDE bridges | The misleading Aero7 property sheets and five category entries without their advertised control are no longer reachable. Each bridge checks for its real KDE module before launch, including search and Ease of Access links. All 49 mapped modules are present on the host and in the disposable Aero7 VM. |
 | Personalization | Aero theme, background, Window Color, Screen Saver | Only one visually distinct Aero theme is shown. Background opens without scanning or decoding on the UI thread; requested icons were visually checked in a disposable Aero7 VM. Theme selection now waits for the color-scheme command to succeed before highlighting the swatch, and displays an error on failure. |
 | Navigation | Back, forward and history menu | Circular packed arrows and a functional location dropdown are present; the VM visual matches the Windows 7 reference closely. |
-| Display / Screen Resolution | Layout drag, per-monitor edits, and backend rollback | Dragging a monitor now enables Apply only when its position actually changes. Resolution, orientation, scale, and primary-display changes are kept per monitor while browsing between displays; Apply submits pending changes for every edited monitor. The rollback command uses a separate pre-edit snapshot, so rejecting a moved monitor restores its original coordinates instead of replaying the dragged coordinates. A failed `kscreen-doctor` rollback or configuration reload is reported as an error rather than a false success. A controlled fake-backend test covers drag, original-coordinate rollback, rollback failure, and a resolution edit retained across monitor selection. Real multi-monitor and timed rollback behavior still needs a disposable graphical VM acceptance run. |
+| Display / Screen Resolution | Layout drag, per-monitor edits, and backend rollback | Dragging a monitor enables Apply only when its position changes. Resolution, orientation, scale, and primary-display changes are retained per monitor. Rollback uses a separate pre-edit snapshot, and backend failures produce an error. Controlled tests cover drag, original-coordinate rollback, failure handling, and edits retained across monitor selection. A disposable graphical VM also passed real resolution reject, 15-second timeout, keep, and restore checks. Real multi-monitor arrangement, scaling, and rotation still need acceptance. |
 | Automated tests | 23 CTests | All pass. The background-open timing test passed five additional consecutive runs. New tests cover theme-apply failure without a false selection, Folder Options save/indexer responses, Taskbar/Start Menu save/readback failures, Window Snapping helper/readback failures, Power Options' unavailable-service state and advanced-link routing, firewall-backend selection, Linux Update command failures, and User Accounts module routing. |
 
 ## VM evidence
@@ -109,6 +109,32 @@ on the development host. The rebuilt Control Panel page and the real Users
 module both remained running for five seconds offscreen with no error output.
 Their graphical appearance and account changes still need disposable-VM
 acceptance.
+
+On October 1, the rebuilt Display page was tested against the real KScreen
+service in a new disposable VM layer. `AERO7_DISPLAY_REAL_BACKEND=1
+./display-page-test` changed Virtual-1 from 1920 × 1080 (mode 1) to
+1280 × 768 (mode 22), verified the changed mode during the confirmation,
+rejected it, and verified the original mode was restored. It then verified
+the automatic 15-second rollback, a kept change, and a kept restoration to
+the original mode. All four transitions passed and the test exited 0. The
+actual Control Panel Screen Resolution page was visually inspected at
+1920 × 1080. The VM exposed only one connected output, so this does not
+prove the multi-monitor arrangement, scaling, or rotation paths.
+
+The resolution changes exposed a SevenTasks `task.model` TypeError during
+delegate reconstruction. The theme's geometry publisher now skips delegates
+whose item or model is absent. After installing that same guard in the
+disposable VM, all four resolution transitions passed again, and the journal
+for that run contained no TypeError or ReferenceError. The desktop and
+taskbar rendered normally after restoration. Display blanking during the
+initial long setup was traced to the guest's idle DPMS/lock settings;
+waking and unlocking the guest restored the visible desktop.
+
+The User Accounts overview and the real KDE Users module were also opened
+and visually inspected in that guest. AccountsService was active, and the
+controlled account-routing test passed all four Qt test groups in the VM.
+The module log contained MESA software-rendering warnings. Account editing
+still requires an authenticated save/readback acceptance check.
 
 ## Remaining functional acceptance
 
