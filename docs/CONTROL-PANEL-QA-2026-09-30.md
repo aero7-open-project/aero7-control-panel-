@@ -368,3 +368,71 @@ privileged account changes, errors, and readback are safely tested in a VM.
 The Plasma wallpaper command currently accepts Fill, Fit, Stretch and Center
 (`pad`). It rejects `tile`, so the previously broken Tile option is not shown
 until there is a supported backend implementation.
+
+## October 1 follow-up: real Users bridge transactions
+
+The same disposable 1920×1080 VM ran the installed `kcm_users` from
+`plasma-workspace 6.7.4-3.2`, launched from its graphical Command Prompt.
+The source Control Panel remains on `testing`; this acceptance does not
+certify every KDE control or the complete account-management workflow.
+
+Verified cases:
+
+- Canceling the Create User form left the proposed `a7controlqa` account
+  absent from `getent passwd`.
+- Mismatched password fields produced the real **Passwords must match**
+  validation and left that account absent.
+- Canceling the administrator prompt for creation left the account absent.
+- A later authorized creation produced a standard account with the expected
+  username, display name, UID, home path and no `wheel` membership. Changing
+  that disposable account to Administrator and applying produced actual
+  AccountsService `AccountType=1` and `wheel` membership.
+- The Change Password dialog sent the AccountsService password request;
+  a password-only SSH login as that fixture succeeded with the replacement
+  test password. No real user's password was changed.
+- Canceling authorization for removal preserved the account. Retrying
+  **Keep files** with authorization removed it from the account database
+  and retained `/home/a7controlqa` with mode 0700.
+- A second, immediate creation of `a7controlqa2`, with authorization already
+  cached by the graphical session, sent both the creation and password
+  requests in the same second. A first password-only login succeeded. That
+  fixture was also removed through **Keep files**, retaining its test home.
+
+Unresolved defects and boundaries:
+
+- The first creation answered the prompt about 29 seconds after the request
+  began. The account was created, but there was no corresponding
+  password-setting request in the AccountsService journal; its supplied
+  password failed a real login. The editor stayed on Create User. This is
+  consistent with the default roughly 25-second D-Bus request timeout,
+  after which the KDE caller cannot continue its password step even though
+  the authorized backend operation finishes later. The immediate creation
+  above passed. **Do not treat a timeout as a rollback or assume the new
+  account has its requested password.** The Aero7 overview now warns users
+  to check the account and password before signing out and to use Change
+  Password when needed. This warning is not a backend fix.
+- At 21:28:43 the installed Aero UAC agent exited with SIGSEGV during a
+  creation request, before its password prompt appeared. Systemd restarted
+  it and Polkit denied that attempt; the account remained absent. A fresh
+  agent subsequently displayed the prompt. A VM-only debugger launch
+  exercised cancellation, successful creation, and canceled/successful
+  removal without reproducing the crash. Its logs showed repeated
+  completion handling after dialog cancellation/hiding. Neither the crash
+  cause nor a repair has been established; the UAC source and package were
+  not modified. The original supervised service was restored and confirmed
+  active after debugging.
+- The earlier empty-display-name defect remains unresolved. Avatar changes,
+  administrator-to-standard changes, deletion of home files, fingerprint
+  hardware and screen/login tests as the new user are not certified here.
+
+Both fixture usernames are absent after cleanup. Their test home
+directories are retained only in the disposable overlay; no real home folder,
+host account, host authentication policy or base VM image was changed.
+
+The rebuilt Aero7 overview was opened with `--setting accounts` in the VM.
+Its warning and all five KDE editing links were visible, with the warning
+wrapping inside the page rather than clipping. The bridge regression test
+checks that this warning remains present and word-wrapped; all 24 CTests
+passed. The VM launch log still reports the previously observed absent NVIDIA
+VDPAU backend; this is not evidence of an error-free desktop or a repaired
+authorization agent.

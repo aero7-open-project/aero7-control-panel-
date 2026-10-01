@@ -2,6 +2,7 @@
 #include "LinkLabel.h"
 
 #include <QFile>
+#include <QLabel>
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -39,6 +40,12 @@ private slots:
         QVERIFY(sidebar.first().target.command.contains(QStringLiteral("kcm_users")));
 
         UserAccountsPage page(new QScrollArea);
+        const auto *warning = page.findChild<QLabel *>(QStringLiteral("accountCreationWarning"));
+        QVERIFY(warning);
+        QVERIFY(warning->wordWrap());
+        QVERIFY(warning->text().contains(QStringLiteral("before signing out")));
+        QVERIFY(warning->text().contains(QStringLiteral("Change Password")));
+        QVERIFY(warning->text().contains(QStringLiteral("nothing changed")));
         const QStringList editTasks = {
             QStringLiteral("Change your password"),
             QStringLiteral("Change your picture"),

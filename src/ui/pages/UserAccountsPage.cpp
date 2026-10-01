@@ -141,6 +141,14 @@ UserAccountsPage::UserAccountsPage(QScrollArea *sidebar, QWidget *parent)
     contentV->addSpacing(12);
     contentV->addWidget(Win7::bodyLabel(
         "Account changes currently open the KDE Users settings module."));
+    auto *accountWarning = Win7::bodyLabel(
+        "After adding an account, check that it appears in the account list and that "
+        "its password works before signing out. If administrator approval takes "
+        "too long, the editor can time out while account creation still finishes. "
+        "Use Change Password on the new account if needed; do not assume a timeout "
+        "means nothing changed.");
+    accountWarning->setObjectName(QStringLiteral("accountCreationWarning"));
+    contentV->addWidget(accountWarning);
     contentV->addSpacing(18);
 
     auto *body = new QHBoxLayout;
